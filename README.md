@@ -2,28 +2,34 @@
 
 Shared house-style publishing toolchain: decks, memos and long documents from markdown/Python to PDF,
 and short videos from HTML to MP4, with one look, one set of vendored fonts and one pinned Chromium
-render. Every repo that produces reports pins a version of this tool and proves in CI that each
-committed PDF and MP4 rebuilds from its source.
+render; and Office files to PDF through a pinned office2pdf, with no browser. Every repo that produces
+reports pins a version of this tool and proves in CI that each committed PDF and MP4 rebuilds from its
+source.
 
 The rules for captain-facing reports (what a report is, where copies go, naming, versions, the animus
 exception) live in `~/Documents/AGENTS.md`. This tool implements them; it does not restate them.
 
 ## Install
 
-The tool owns its environment through uv; nothing depends on host Python, Node or fonts.
+The tool owns its environment through uv; nothing depends on host Python, Node or fonts. It installs
+as a profile (an extra), or several:
 
 ```sh
-uv tool install git+https://github.com/witt3rd/publishing@v0.2.0   # or run any command through uvx
-publishing setup                                                     # the pinned Chromium, into the user cache
+# render: decks, memos and documents (Playwright and the pinned Chromium)
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.3.0'   # or run through uvx
+publishing setup                    # the pinned Chromium, into the user cache
+
+# video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.3.0'
+publishing setup --video            # also the pinned HyperFrames
+
+# convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.3.0'
+publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 ```
 
-For videos, install the `video` extra (it brings the pinned Node) and HyperFrames; ffmpeg comes from
-the host, or use the container image (below):
-
-```sh
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.2.0'
-publishing setup --video                                             # also the pinned HyperFrames
-```
+With no extra the install is the convert profile's code alone: a render command there exits 3 and
+names the install that adds the render profile.
 
 ## Use
 
@@ -35,6 +41,7 @@ publishing publish docs/notes/topic-v1     # copy the PDF or MP4 to ~/Documents/
 publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes.md   # before/after deck
 publishing html PAGE.html -o OUT.pdf [--json]   # a person's HTML to PDF: always user-content mode
 publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
+publishing convert report.docx [-o report.pdf]  # an Office file to a PDF (the convert profile; see Convert)
 ```
 
 **User content.** Anything made from a person's content renders in user-content mode: Chromium's
@@ -56,7 +63,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   line, figures, footnotes and highlighted code.
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.2.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.3.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -103,15 +110,53 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
 - **Credits.** HyperFrames is Apache-2.0, by HeyGen and its contributors; it is pinned, not vendored. See
   `NOTICE`.
 
+## Convert
+
+`publishing convert SRC [-o OUT] [--timeout SECONDS] [--max-bytes N]`, or from Python
+`publishing.convert.convert(src, dest=None, *, timeout=120, max_bytes=256 MiB) -> Path` (it raises a
+`ConvertError` subclass whose `exit_code` is the command's). It is the headless entry for services:
+
+- **In.** A file named `.docx`, `.xlsx` or `.pptx`, in any letter case. Nothing else reaches the
+  converter (exit 2).
+- **Out.** One PDF at `OUT`, by default beside `SRC` with the suffix `.pdf`; its path is the only line on
+  stdout. An existing file is never overwritten (exit 2). On any failure there is no `OUT`.
+- **Converter.** [office2pdf](https://github.com/developer0hye/office2pdf) `v0.6.7` (pure Rust, no
+  LibreOffice), Apache-2.0. `publishing setup --convert [--bin-dir DIR]` downloads the release build for
+  this machine (`x86_64` musl and glibc, `aarch64` glibc, macOS), checks the archive's and the binary's
+  sha256 against `src/publishing/convert.py`, and installs it into the user cache or as
+  `DIR/office2pdf`; run again, it downloads nothing. There is no `aarch64` musl build upstream.
+- **Which converter.** `OFFICE2PDF_BIN`, when set, is authoritative, even when it is wrong or empty: it
+  never falls back. Otherwise `/usr/local/bin/office2pdf`, then the pinned install in the user cache,
+  then a developer build at `~/src/ext/office2pdf/target/release/office2pdf`. Only an executable regular
+  file is a converter.
+- **The call.** `office2pdf SRC -o OUT` into a fresh temporary folder under `TMPDIR`, moved into place
+  when it succeeds; the folder is always removed.
+- **Limits.** The converter is stopped after `--timeout` seconds (default 120) or as soon as its output
+  passes `--max-bytes` (default 268435456). Neither changes a conversion that stays inside them.
+- **Errors** (stderr, `publishing: ` and one message). A non-zero exit carries at most 400 characters
+  of the converter's stderr, or `office2pdf failed (<status>)` when it wrote none; a zero exit with no
+  output is the same error; so is an output that is not a PDF, a time-out or an output over the cap.
+- **Exit codes.** 0 converted; 1 the conversion failed; 2 usage (not an Office file, no such source,
+  the output exists, a bad option); 3 no converter (`office2pdf not found`), or `setup` failed.
+- **Environment.** `OFFICE2PDF_BIN` (above); `PUBLISHING_CACHE` (default `$XDG_CACHE_HOME/publishing`,
+  else `~/.cache/publishing`) for the pinned install; `TMPDIR` for the temporary folder;
+  `OFFICE_PDF_TESTS=1` makes the real-conversion test run, and fail without a converter.
+- **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.3.0 convert /in/report.docx -o /out/report.pdf`.
+  `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
+  its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
+  In an existing Alpine image (with `python3` from apk):
+  `uv tool install 'publishing[convert] @ git+…@v0.3.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+
 ## Services
 
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.2.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.2.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.2.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.2.0 \
+docker build -t publishing:0.3.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.3.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.3.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.3.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 
@@ -124,13 +169,14 @@ docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:
   difference: the author's to fix; `2` usage or configuration (a bad argument, not a source, a bad
   `report.toml`); `3` the toolchain is missing or broken (or the repo pins another version): the
   operator's to fix.
-- **Environment.** `PUBLISHING_CACHE` (where `setup --video` installs HyperFrames; the image sets it),
+- **Environment.** `PUBLISHING_CACHE` (where `setup --video` installs HyperFrames and `setup --convert`
+  office2pdf; the image sets it), `OFFICE2PDF_BIN` (convert's converter; the image sets it),
   `PLAYWRIGHT_BROWSERS_PATH` (the Chromium; the image sets it), `HYPERFRAMES_FFMPEG_PATH` and
   `HYPERFRAMES_FFPROBE_PATH` (default: the `PATH`), `PUBLISHING_DOCUMENTS` (`publish`'s root, default
   `~/Documents`). No network is needed at build time.
 - **The image** (`Dockerfile`): Debian bookworm slim by digest, uv, the tool from `uv.lock` with the
-  `video` extra, Chromium and its OS libraries from `publishing setup --with-deps --video`, Debian's
-  ffmpeg, fontconfig; the house fonts are vendored in the package. It runs as any user (`--user`) and
+  `video` and `convert` extras, Chromium and its OS libraries, HyperFrames and office2pdf from
+  `publishing setup --with-deps --video --convert`, Debian's ffmpeg, fontconfig; the house fonts are vendored in the package. It runs as any user (`--user`) and
   writes only to the mounted outputs and `/tmp`. User-content mode (`html`, `--user-content`) runs in the
   same image under the locked-down flags in [docs/user-content.md](docs/user-content.md) "Containers";
   a video is never user content (it is refused there). Further converters join it as subcommands of the same
@@ -139,7 +185,7 @@ docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:
 ## Develop
 
 ```sh
-uv sync --all-extras && uv run publishing setup --video && uv run pytest -q && uv run publishing check
+uv sync --all-extras && uv run publishing setup --video --convert && OFFICE_PDF_TESTS=1 uv run pytest -q && uv run publishing check
 tools/usercontent-check.sh   # the user-content tests in a locked-down container (needs Docker)
 ```
 

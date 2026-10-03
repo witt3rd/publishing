@@ -1,10 +1,10 @@
 import pytest
 
-from publishing.render import Renderer
-
 
 @pytest.fixture(scope="session")
 def renderer():
+    from publishing.render import Renderer  # the render profile; the convert tests run without it
+
     with Renderer() as r:
         yield r
 
