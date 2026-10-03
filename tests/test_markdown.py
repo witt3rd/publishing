@@ -49,3 +49,9 @@ def test_code_is_highlighted_and_unknown_languages_are_plain():
 def test_lists_may_follow_a_paragraph_directly():
     p = parse("Items:\n- one\n- two\n")
     assert "<ul>" in p.body
+
+
+def test_pandoc_attributes_on_images_and_spans():
+    p = parse("![Cap](fig.svg){width=76%}\n\nPick [Recommended]{.rec} now.\n")
+    assert '<figure style="width:76%"><img src="fig.svg"' in p.body
+    assert '<span class="rec">Recommended</span>' in p.body

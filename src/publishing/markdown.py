@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from markdown_it import MarkdownIt
 from markdown_it.token import Token
+from mdit_py_plugins.attrs import attrs_plugin
 from mdit_py_plugins.container import container_plugin
 from mdit_py_plugins.deflist import deflist_plugin
 from mdit_py_plugins.footnote import footnote_plugin
@@ -96,7 +97,7 @@ def _div_render(self, tokens, idx, _options, _env):
 def _engine() -> MarkdownIt:
     md = MarkdownIt("commonmark", {"html": True, "typographer": True, "highlight": _highlight})
     md.enable(["table", "strikethrough", "replacements", "smartquotes"])
-    md.use(footnote_plugin).use(deflist_plugin)
+    md.use(footnote_plugin).use(deflist_plugin).use(attrs_plugin, after=("image", "span_close"), spans=True)
     md.use(container_plugin, "div", validate=lambda params, *_: bool(params.strip()), render=_div_render)
     return md
 
@@ -132,8 +133,13 @@ def _figures(md: MarkdownIt, tokens: list[Token], env) -> list[Token]:
                 cap = md.renderer.renderInline(img.children or [], md.options, env)
                 src = html.escape(img.attrGet("src") or "")
                 alt = html.escape(img.content or "")
+                cls = img.attrGet("class")
+                width = img.attrGet("width")
+                attrs = (f' class="{html.escape(cls)}"' if cls else "") + (
+                    f' style="width:{html.escape(width)}"' if width else "")
                 fig = Token("html_block", "", 0)
-                fig.content = (f'<figure><img src="{src}" alt="{alt}">'
+                fig.content = (f"<figure{attrs}>"
+                               + f'<img src="{src}" alt="{alt}">'
                                + (f"<figcaption>{cap}</figcaption>" if cap.strip() else "") + "</figure>\n")
                 out.append(fig)
                 i += 3
@@ -143,8 +149,19 @@ def _figures(md: MarkdownIt, tokens: list[Token], env) -> list[Token]:
     return out
 
 
+UNQUOTED = re.compile(r"(?<=[)\]])\{([^{}\n]*)\}")
+
+
+def _quote_attr_values(body: str) -> str:
+    """Pandoc allows `{width=88%}`; the attrs reader needs `{width="88%"}`."""
+    def fix(m):
+        return "{" + re.sub(r'(\w+)=([^\s"\'{}]+)', r'\1="\2"', m.group(1)) + "}"
+    return UNQUOTED.sub(fix, body)
+
+
 def parse(src: str, *, toc_levels: int = 2) -> Page:
     meta, body = front_matter(src)
+    body = _quote_attr_values(body)
     md = _engine()
     env: dict = {}
     tokens = md.parse(body, env)
