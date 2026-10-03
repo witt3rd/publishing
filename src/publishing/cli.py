@@ -1,4 +1,5 @@
-"""publishing new | build | check | publish | setup | compare | html | convert | extract
+"""publishing new | build | check | publish | setup | compare | html | render-html | render-md | pdf-pages
+| convert | extract
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -17,7 +18,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert, extract
+from . import __version__, convert, extract, renderhtml
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -272,7 +273,8 @@ def _rel(p: Path) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="publishing", description="House-style decks, memos and documents to PDF, "
-                                 "videos to MP4, Office files to PDF. Report rules: ~/Documents/AGENTS.md.")
+                                 "videos to MP4, HTML and markdown to PDF and page images, Office files to PDF. "
+                                 "Report rules: ~/Documents/AGENTS.md.")
     ap.add_argument("--version", action="version", version=f"publishing {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -335,6 +337,15 @@ def main(argv=None) -> int:
     p.add_argument("--require-netns", action="store_true", help="fail unless the render gets no network namespace")
     p.add_argument("--json", action="store_true", help="print the result as one JSON line")
     p.set_defaults(fn=cmd_html)
+
+    for name, what, hlp in (
+            ("render-html", "html", "HTML to a PDF, page images and a thumbnail (user-content mode unless --trusted)"),
+            ("render-md", "md", "markdown to a house memo or document PDF, page images and a thumbnail (likewise)"),
+            ("pdf-pages", "pdf", "a PDF's pages to images and a thumbnail (PDFium, supervised)")):
+        p = sub.add_parser(name, help=hlp, description="Exit codes: 0 done (stdout: each file written, or --json); "
+                           "1 the render failed; 2 usage; 3 the toolchain or host cannot render safely. "
+                           "README \"Render\".")
+        renderhtml.add_arguments(p, what)
 
     p = sub.add_parser("convert", help="an Office file (.docx, .xlsx, .pptx) to a PDF, through office2pdf",
                        description="Exit codes: 0 converted (stdout: the PDF's path); 1 the conversion failed; "

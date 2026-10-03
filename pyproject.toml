@@ -1,12 +1,13 @@
 [project]
 name = "publishing"
 version = "0.4.0"
-description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, Office files to PDF"
+description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, Office files to PDF"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 # Install profiles are extras: `publishing[render]` builds decks, memos and documents (Playwright and
-# Chromium); `publishing[video]` adds videos to it; `publishing[convert]` turns Office files into PDFs
+# Chromium) and runs render-html, render-md and pdf-pages (Chromium and PDFium, from pypdfium2);
+# `publishing[video]` adds videos to it; `publishing[convert]` turns Office files into PDFs
 # with the standard library and the office2pdf binary that `publishing setup --convert` installs
 # (pinned in src/publishing/convert.py). The convert profile needs neither Playwright nor Chromium, so
 # it installs on musl (Alpine).

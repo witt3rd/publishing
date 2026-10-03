@@ -3,7 +3,9 @@
 #   tools/usercontent-check.sh            # builds publishing-usercontent-check:local, then runs it
 # 1. Under Docker's default seccomp profile the sandbox cannot start, and the render must refuse.
 # 2. Under the documented flags (non-root, every capability dropped, no-new-privileges, no network,
-#    read-only root, ci/seccomp-chromium.json) the hostile-fixture tests must pass.
+#    read-only root, ci/seccomp-chromium.json) the hostile-fixture tests must pass, those of
+#    `html` and the build (test_usercontent.py) and of `render-html`/`render-md`/`pdf-pages`
+#    (test_renderhtml.py).
 set -eu
 cd "$(dirname "$0")/.."
 TAG=${TAG:-publishing-usercontent-check:local}
@@ -25,4 +27,4 @@ echo "   refused: $out"
 echo "2. documented flags: the hostile fixtures"
 # shellcheck disable=SC2086
 docker run --rm $LOCKED --security-opt seccomp="$PWD/ci/seccomp-chromium.json" "$TAG" \
-  python -m pytest -q -p no:cacheprovider tests/test_usercontent.py
+  python -m pytest -q -p no:cacheprovider tests/test_usercontent.py tests/test_renderhtml.py

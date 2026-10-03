@@ -2,7 +2,9 @@
 
 Shared house-style publishing toolchain: decks, memos and long documents from markdown/Python to PDF,
 and short videos from HTML to MP4, with one look, one set of vendored fonts and one pinned Chromium
-render; Office files to PDF through a pinned office2pdf and documents to markdown through a pinned markitdown, neither with a browser. Every repo that produces
+render; HTML and markdown from anyone to a PDF, page images and a thumbnail, in a locked-down render;
+Office files to PDF through a pinned office2pdf and documents to markdown through a pinned markitdown,
+neither with a browser. Every repo that produces
 reports pins a version of this tool and proves in CI that each committed PDF and MP4 rebuilds from its
 source.
 
@@ -43,6 +45,9 @@ publishing check [PATH...]                 # fail unless every PDF and MP4 match
 publishing publish docs/notes/topic-v1     # copy the PDF or MP4 to ~/Documents/<folder>/, never overwriting
 publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes.md   # before/after deck
 publishing html PAGE.html -o OUT.pdf [--json]   # a person's HTML to PDF: always user-content mode
+publishing render-html PAGE.html --pdf OUT.pdf --png OUTDIR --thumbnail 320   # PDF, page images, thumbnail (see Render)
+publishing render-md NOTE.md --pdf OUT.pdf      # a person's markdown as a house memo, the same way
+publishing pdf-pages FILE.pdf --png OUTDIR      # any PDF's pages as images
 publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
 publishing convert report.docx [-o report.pdf]  # an Office file to a PDF (the convert profile; see Convert)
 publishing extract report.pdf [-o report.md]    # a document to markdown (the extract profile; see Extract)
@@ -50,9 +55,10 @@ publishing extract report.pdf [-o report.md]    # a document to markdown (the ex
 
 **User content.** Anything made from a person's content renders in user-content mode: Chromium's
 sandbox on, no network, nothing outside the document's own folder, no script, and caps on bytes, pages,
-time and memory. `publishing html` always uses it; a build uses it with `--user-content`,
-`[user_content] enabled = true` in report.toml, or `PUBLISHING_USER_CONTENT=1` (for a service's
-image). The container flags it needs (non-root, `ci/seccomp-chromium.json`, `--network none`) and its
+time and memory. `html`, `render-html`, `render-md` and `pdf-pages` use it by default (only an explicit
+`--trusted`, for the house's own sources, leaves it); a build uses it with `--user-content`,
+`[user_content] enabled = true` in report.toml, or `PUBLISHING_USER_CONTENT=1` (for a service's image,
+where no flag turns it off). The container flags it needs (non-root, `ci/seccomp-chromium.json`, `--network none`) and its
 residual risks: [docs/user-content.md](docs/user-content.md). The plain build is for trusted sources.
 
 ## Conventions
@@ -188,6 +194,54 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
   Debian slim (glibc). Spire's venue: [docs/spire-extract-migration.md](docs/spire-extract-migration.md).
 
+## Render
+
+`publishing render-html SRC [--pdf OUT] [--png OUTDIR] [--thumbnail W]`, its siblings
+`publishing render-md SRC.md [...] [--format memo|document]` and `publishing pdf-pages SRC.pdf [--png OUTDIR]
+[--thumbnail W]`, or from Python `publishing.renderhtml.render(src, pdf=, png=, thumbnail=, ...)` and
+`pdf_pages(src, png=, thumbnail=, ...) -> Rendered` (they raise a `RenderError` subclass whose `exit_code` is
+the command's). They are the headless render entry for services (the render profile; nothing new to pin):
+
+- **Mode.** User-content mode by default, the one in [docs/user-content.md](docs/user-content.md): Chromium's
+  sandbox on and verified, no network, nothing outside the source's own folder, no script (`--allow-js` runs
+  it, still offline), and the limits. `--trusted` is the house build's renderer (sandbox off, `file://`
+  pages, no request filter, no limits on the render): for a repository's own sources, **never for a
+  person's content**; with `PUBLISHING_USER_CONTENT=1` (a service's image) it is refused.
+- **In.** `render-html`: a `.html` or `.htm` file; it may load files from its own folder only. `render-md`: a
+  `.md` file, made into the house memo (or `--format document`, or the front matter's `format`) with the
+  build's template, and no `report.toml`; markdown and highlighting run in a supervised child too. It runs
+  no house scan (secrets, private words): that is a report rule, not a safety one. `pdf-pages`: any `.pdf`,
+  treated as hostile.
+- **Out.** The PDF at `--pdf OUT`, or beside SRC with the suffix `.pdf` when neither `--pdf` nor `--png` is
+  given. `--png OUTDIR`: one image per page, `OUTDIR/page-001.png`, `page-002.png`, ... (more digits past
+  999 pages), `--width` pixels wide (default 1400). `--thumbnail W`: the first page `W` pixels wide, as
+  `OUTDIR/thumbnail.png`, or without `--png` beside the PDF as `<stem>.thumbnail.png`. Stdout is each file
+  written, one per line; `--json` prints one line instead: `mode`, `pages`, `pdf`, `images`, `thumbnail`,
+  `blocked` (every refused request), `sandboxed`, `netns`, `problems` (render-md's layout lint: advice).
+  The same source gives the same image bytes; the PDF's bytes differ run to run (its words and pages do
+  not).
+- **Never overwritten.** An existing PDF or thumbnail, or an `OUTDIR` already holding `page-*.png`, is a usage
+  error before anything runs (other files in `OUTDIR` are left alone). On any failure nothing is written.
+- **Images.** PDFium (pypdfium2's, Chromium's PDF engine) draws them in a supervised child: the time and
+  memory limits, no network where the host allows a namespace, no secrets, no forms or PDF script, and it
+  refuses a PDF over `--max-bytes`, past `--max-pages`, or a page whose image would pass 40 megapixels
+  before it draws.
+- **Limits.** `--timeout` (default 60 s) is the wall clock of the whole call, render and images;
+  `--max-pages` (300) caps the PDF and the images; `--max-bytes` (50 MiB) the source and everything it loads
+  (`pdf-pages`: the PDF); `--max-memory` (2048 MB) each child's private memory; `--require-netns` fails
+  unless every child runs with no network. `--paper letter|a4` sizes a page that sets no `@page size`.
+- **Exit codes.** 0 done; 1 the render failed (a limit, a hostile or broken source, a crash); 2 usage (no
+  such source, a wrong suffix, an output exists, a bad option, `--trusted` under
+  `PUBLISHING_USER_CONTENT=1`); 3 the toolchain or the host cannot render safely (no Chromium, no sandbox,
+  no network namespace with `--require-netns`), or the install is the convert profile.
+- **Environment.** `PUBLISHING_USER_CONTENT=1` (above), `PLAYWRIGHT_BROWSERS_PATH` (the Chromium), `TMPDIR`
+  (the staging folders). Nothing else reaches the render: its children get no token.
+- **Containers.** The toolbox image runs it under the flags in
+  [docs/user-content.md](docs/user-content.md) "Containers"; CI's image job runs `render-html` with
+  `--png` and `--thumbnail` under them.
+
+`publishing html` stays as it was (PDF only); `render-html` is the same render with images.
+
 ## Services
 
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
@@ -219,8 +273,9 @@ docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:
   `publishing setup --with-deps --video --convert`, Debian's ffmpeg, fontconfig; the house fonts are vendored in the package. It runs as any user (`--user`) and
   writes only to the mounted outputs and `/tmp`. User-content mode (`html`, `--user-content`) runs in the
   same image under the locked-down flags in [docs/user-content.md](docs/user-content.md) "Containers";
-  a video is never user content (it is refused there). Further converters join it as subcommands of the same
-  CLI, each with its own tests, so a service keeps one image and one entry.
+  a video is never user content (it is refused there). `render-html`, `render-md` and `pdf-pages` (Render)
+  run there under the same flags. Further converters join it as subcommands of the same CLI, each with its
+  own tests, so a service keeps one image and one entry.
 
 ## Develop
 
