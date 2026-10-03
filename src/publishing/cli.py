@@ -57,8 +57,9 @@ def _sources(a, cfg):
 
 
 def _renderer(a, cfg):
-    """The trusted renderer, or user-content mode when `--user-content` or report.toml asks for it."""
-    if a.user_content or cfg.user_content:
+    """The trusted renderer, or user-content mode when `--user-content`, report.toml or the
+    environment (PUBLISHING_USER_CONTENT=1, for a service's image: no flag can turn it off) asks."""
+    if a.user_content or cfg.user_content or os.environ.get("PUBLISHING_USER_CONTENT") == "1":
         return UserContentRenderer(cfg.user_content or Limits())
     return Renderer()
 

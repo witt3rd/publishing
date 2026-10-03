@@ -305,6 +305,15 @@ def test_report_toml_turns_user_content_mode_on_and_a_deck_is_refused(repo):
         build(resolve(folder, cfg), cfg, r)
 
 
+def test_the_environment_forces_user_content_mode(repo, monkeypatch):
+    folder = repo / "docs" / "notes" / "deck-v1"
+    assert main(["new", str(folder), "--format", "deck"]) == 0
+    monkeypatch.setenv("PUBLISHING_USER_CONTENT", "1")
+    assert main(["build", str(folder)]) == 1  # a deck is code: refused
+    monkeypatch.delenv("PUBLISHING_USER_CONTENT")
+    assert main(["build", str(folder)]) == 0
+
+
 def test_the_render_child_gets_no_secrets_from_the_environment(monkeypatch):
     monkeypatch.setenv("GH_TOKEN", "ghp_secret")
     monkeypatch.setenv("DOPPLER_TOKEN", "dp.st.secret")
