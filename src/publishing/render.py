@@ -44,9 +44,17 @@ PAGE_LINT = """() => {
 
 class Renderer:
     """One browser for a whole build: `with Renderer() as r: r.pdf(html, out, kind=...)`.
-    Nested use shares the browser already running (Playwright's sync API allows one)."""
+    Nested use shares the browser already running (Playwright's sync API allows one).
+    For trusted sources only (sandbox off, file:// pages, no request filter): a person's content
+    goes through `usercontent.UserContentRenderer`."""
 
     _active = None
+    untrusted = False
+
+    @staticmethod
+    def url(path: Path) -> str:
+        """The URL the page uses for a local folder or file."""
+        return path.as_uri()
 
     def __enter__(self):
         if Renderer._active is not None:

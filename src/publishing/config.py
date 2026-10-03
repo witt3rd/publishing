@@ -13,6 +13,11 @@
   [publish]
   notes = "Spire/Design and evidence"   # docs/<kind>/ -> folder under ~/Documents
 
+  [user_content]                # build every source here as untrusted (docs/user-content.md)
+  enabled = true                # off unless true; `build --user-content` turns it on per run
+  max_pages = 300               # optional limits: max_bytes, max_pages, timeout (s),
+  allow_js = false              #   max_memory_mb, allow_js, require_netns
+
   [[document]]                  # a markdown file with a fixed PDF path
   source = "docs/spire.md"
   pdf = "docs/Spire.pdf"
@@ -27,6 +32,8 @@ paths in it are relative to <dir>. With no file the defaults apply.
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from .usercontent import Limits, limits_from
 
 FORMATS = ("deck", "memo", "document")
 PAPERS = ("letter", "a4")
@@ -59,6 +66,7 @@ class Config:
     days: bool = True
     publish: dict = field(default_factory=dict)
     documents: list = field(default_factory=list)
+    user_content: Limits | None = None  # set: every build here renders in user-content mode
 
     def document_for(self, source: Path) -> Document | None:
         source = source.resolve()
@@ -96,6 +104,10 @@ def load(start: Path) -> Config:
         raise ConfigError(f"{path}: format must be \"pdf\" or \"markdown\", not {cfg.format!r}")
     if cfg.paper not in PAPERS:
         raise ConfigError(f"{path}: paper must be one of {PAPERS}, not {cfg.paper!r}")
+    try:
+        cfg.user_content = limits_from(data.get("user_content", {}))
+    except ValueError as e:
+        raise ConfigError(f"{path}: {e}") from e
     for i, d in enumerate(data.get("document", [])):
         try:
             doc = Document(source=(root / d["source"]).resolve(), pdf=(root / d["pdf"]).resolve(),

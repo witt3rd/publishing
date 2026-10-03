@@ -141,7 +141,7 @@ def deck_html(pages: list[str], base: Path, title: str) -> str:
             f"</head><body>{body}</body></html>")
 
 
-def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None) -> str:
+def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None, r=Renderer) -> str:
     md_path = s.src if s.src.suffix == ".md" else s.src / f"{s.kind}.md"
     page = markdown.parse(md_path.read_text())
     meta = page.meta
@@ -168,20 +168,28 @@ def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None) -> str:
     style = (f"@page {{ size: {size}; @top-left {{ content: {_css_string(title_txt)}; }}"
              f" @top-right {{ content: {_css_string(kicker)}; }} @bottom-left {{ content: {_css_string(footer)}; }} }}"
              " @page :first { @top-left { content: none; } @top-right { content: none; } }")
-    body = _inline_svgs(page.body, md_path.parent)
+    body = _inline_svgs(page.body, md_path.parent, confine=r.untrusted)
     main_cls = ' class="h2top"' if page.top == 2 else ""
     front = f'<section class="front">{block}{toc}</section>' if s.kind == "document" else block
     return (f'<!doctype html><html lang="{htmlmod.escape(meta.get("lang", "en"))}"><head><meta charset="utf-8">'
             f"<title>{htmlmod.escape(re.sub(r'<[^>]+>', '', title_txt))}</title>"
-            f'<base href="{md_path.parent.as_uri()}/">'
-            f'<link rel="stylesheet" href="{(theme() / "page.css").as_uri()}"><style>{style}</style></head>'
+            f'<base href="{r.url(md_path.parent).rstrip("/")}/">'
+            f'<link rel="stylesheet" href="{r.url(theme() / "page.css")}"><style>{style}</style></head>'
             f'<body class="{s.kind}">{front}<main{main_cls}>{body}</main></body></html>')
 
 
-def _inline_svgs(body: str, base: Path) -> str:
-    """Inline local SVG images, so their text uses the vendored fonts (an <img> SVG cannot)."""
+def _inline_svgs(body: str, base: Path, confine: bool = False) -> str:
+    """Inline local SVG images, so their text uses the vendored fonts (an <img> SVG cannot).
+    `confine` (user content): only a file inside `base`, through no hidden or `..` part."""
     def sub(m):
-        f = base / htmlmod.unescape(m.group(1))
+        rel = htmlmod.unescape(m.group(1))
+        f = base / rel
+        if confine:
+            if rel.startswith("/") or any(p.startswith(".") for p in Path(rel).parts):
+                return m.group(0)
+            f = f.resolve()
+            if not f.is_relative_to(base.resolve()):
+                return m.group(0)
         if not f.is_file():
             return m.group(0)
         svg = f.read_text()
@@ -208,11 +216,13 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
     if not s.src.exists():
         raise BuildError(f"{s.name}: its source {s.src} is missing")
     work = out.parent / f".{out.stem}.html"
+    if s.kind == "deck" and r.untrusted:
+        raise BuildError(f"{s.name}: a deck's slides.py is code; user-content mode builds memos and documents only")
     if s.kind == "deck":
         work.write_text(_deck_html(s))
         problems, text = r.pdf(work, out, kind="deck")
     else:
-        work.write_text(_page_html(s, cfg))
+        work.write_text(_page_html(s, cfg, r=r))
         problems, text = r.pdf(work, out, kind=s.kind, paper=s.paper)
         if s.kind == "document":
             seen = None
@@ -221,7 +231,7 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
                 if found == seen:
                     break
                 seen = found
-                work.write_text(_page_html(s, cfg, found))
+                work.write_text(_page_html(s, cfg, found, r=r))
                 problems, text = r.pdf(work, out, kind=s.kind, paper=s.paper)
         text += "\n" + "\n".join(_furniture(s, cfg))  # the running header and footer are CSS strings
     hosts = sorted(f for f in pdf.fonts(out) if not f.startswith("Publishing"))
