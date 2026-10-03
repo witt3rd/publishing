@@ -15,6 +15,9 @@ tests in a locked-down container, run in CI).
 | Entry | Mode |
 |---|---|
 | `publishing html PAGE.html -o OUT.pdf` | always user-content: the entry for services |
+| `publishing render-html PAGE.html --pdf OUT --png OUTDIR --thumbnail W` | user-content by default: the entry for services that want page images too |
+| `publishing render-md NOTE.md ...` and `publishing pdf-pages FILE.pdf ...` | user-content by default (pdf-pages has no other mode) |
+| `render-html`/`render-md --trusted` | trusted: the house build's renderer, for a repository's own sources, never a person's; refused under `PUBLISHING_USER_CONTENT=1` |
 | `publishing build/check --user-content` | user-content for this run |
 | `[user_content] enabled = true` in report.toml | user-content for every build in that repo |
 | `PUBLISHING_USER_CONTENT=1` in the environment | user-content for every build; set it in a service's image, where no flag turns it off |
@@ -25,6 +28,13 @@ tests in a locked-down container, run in CI).
 output, pages, the refused requests, `sandboxed`, `netns`). It never overwrites its output. Exit 0 is a
 PDF; exit 1 (the render failed) or 2 (usage: an existing output, a bad limit) prints
 `publishing: <reason>` and writes nothing.
+
+`render-html` takes the same limits (README "Render"), with `--timeout` covering the whole call, and adds
+`--png OUTDIR` (`page-001.png`, ...), `--thumbnail W` (`thumbnail.png`) and `--width`. Its page images are
+drawn from the PDF by PDFium in a second supervised child (below); `pdf-pages` runs that child alone on
+any PDF; `render-md` makes a person's markdown into the house memo or document in a supervised child,
+then renders it as an HTML page whose folder is the markdown's. A sandbox that cannot start is exit 3
+there (the host's to fix), not 1.
 
 In a build, user-content mode renders memos and documents. A deck is refused: its `slides.py` is
 Python the tool runs, so a deck is trusted by definition. A video is refused too: HyperFrames runs its
@@ -73,6 +83,18 @@ Each render is its own process tree, supervised by the caller:
 
 A typical page renders in under a second with about 125 MB of private memory.
 
+10. **Page images in their own child.** `render-html --png/--thumbnail`, `render-md` and `pdf-pages`
+    draw pages with PDFium (pinned by pypdfium2, the engine Chromium shows PDFs with) in a second
+    process tree under the same supervisor: the time limit (what is left of the call's), the memory
+    limit, the scrubbed environment and the network namespace. It reads its own copy of the PDF and
+    writes only into its own temporary folder. Before drawing it refuses a PDF over `max_bytes`, past
+    `max_pages`, or with a page whose image would pass 40 megapixels (a 1 x 14400 pt sliver is a
+    valid PDF and, at 1400 px wide, an image 20 million pixels tall). Forms and PDF script never run (PDFium's
+    form environment is not started).
+11. **Markdown in its own child.** `render-md` parses and highlights a person's markdown in a
+    supervised child too (time, memory, no network, no secrets), so a pathological input cannot
+    hold the caller; inline SVGs come only from inside the folder, as in a build.
+
 ## Containers
 
 Chromium's sandbox needs unprivileged user namespaces: the container must let a non-root process call
@@ -93,7 +115,8 @@ docker run --rm --user 65532:65532 --cap-drop ALL --security-opt no-new-privileg
 ```
 
 `IMAGE` is the toolbox image built from this repo's `Dockerfile` (README "Services"), whose entrypoint
-is `publishing`; CI's image job runs this exact command in it.
+is `publishing`; CI's image job runs this exact command in it, and the same flags with
+`render-html /in/page.html --pdf /out/page.pdf --png /out/pages --thumbnail 320 --json`.
 
 | Flag | Why |
 |---|---|
@@ -144,6 +167,36 @@ venue image): the venue calls a glibc image that carries publishing.
   must still be shown sandboxed, and planted text can still steer an agent that reads it.
 - **`allow_js` runs a person's script** in the sandboxed renderer, with no network and inside the
   limits; it is more attack surface (V8) than a page without it. Leave it off unless a format needs it.
+- **PDFium parses the PDF outside Chromium's sandbox.** The page-image child has the time and memory
+  limits and no network, but it is an ordinary process: a PDFium exploit runs with the container's user
+  and can read what that user can read. For `render-html` the PDF is Chromium's own output, so it is
+  reached only through a Chromium compromise first; `pdf-pages` parses a person's PDF directly. Mount
+  only the document's folder (read-only) and the output folder, as above; gVisor or a VM per render is
+  the next step up. pypdfium2's PDFium build must move with its releases, like Chromium.
+- **`--trusted` is a flag.** Anything that can pass arguments to `render-html` can ask for the house
+  renderer. A service's image sets `PUBLISHING_USER_CONTENT=1`, which refuses it.
 - **The trusted build is unchanged.** Any build that reaches `publishing build` without the flag, the
   table or the environment variable renders as in v0.1.0. A service sets `PUBLISHING_USER_CONTENT=1`
   in its image.
+
+## Previews: what server-side thumbnails add
+
+Spire's venue draws a PDF artifact's page one in the viewer's browser with pdf.js
+(`app/src/components/ui/use-pdf-page.ts`: `pdfjs-dist`, the whole PDF fetched, page 1 drawn to a canvas,
+cached per tab), and shows an HTML artifact as a live, scaled `<iframe sandbox="">` under a no-script CSP.
+`render-html --thumbnail W` and `pdf-pages --thumbnail W` would make that preview once, on the server:
+
+- **One render per artifact, not per view.** Each card today downloads the whole PDF and pdf.js's worker
+  and parses it, on every device and tab; a thumbnail is one small PNG, cacheable by the artifact's hash
+  (the same source gives the same bytes).
+- **The hostile parse moves off the viewer.** A person's PDF is parsed in every viewer's browser
+  (pdf.js has had code-execution bugs, such as CVE-2024-4367); server-side it is parsed once, inside the
+  limits, the namespace and the container flags above. An HTML card stops running a person's page in the
+  viewer's browser at all.
+- **Consumers without a browser.** E-mail, notifications, search results, agents and exports can show a
+  preview that pdf.js cannot draw for them.
+- **Every page, not only page one,** for a page strip or a review, at a fixed width.
+
+What it costs: a render service with the container flags above (user namespaces through the seccomp
+profile), CPU and storage per artifact, and a thumbnail to refresh when the artifact changes. The
+client-side pdf.js preview can stay as the fallback while thumbnails are made.

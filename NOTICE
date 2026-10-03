@@ -19,6 +19,10 @@ Node.js (runs HyperFrames), via the PyPI package nodejs-wheel-binaries, pinned i
 Playwright and Chromium (the PDF and video renderer), pinned in uv.lock.
   https://playwright.dev, Apache License 2.0; Chromium, BSD-style licence and its third-party notices.
 
+PDFium (page images and thumbnails: render-html, render-md, pdf-pages, build --png, compare), via the
+  PyPI package pypdfium2, pinned in uv.lock. https://pdfium.googlesource.com/pdfium, BSD-3-Clause;
+  pypdfium2 https://github.com/pypdfium2-team/pypdfium2, Apache-2.0 or BSD-3-Clause.
+
 FFmpeg (video encoding), from the host or the container's Debian package; LGPL/GPL per build.
   https://ffmpeg.org
 

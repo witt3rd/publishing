@@ -130,7 +130,9 @@ class Renderer:
 
     def pdf(self, html: Path, out: Path, *, kind: str, paper: str = "letter") -> tuple[list[str], str]:
         """Render `html` to `out`. Returns the layout-lint problems (empty is clean) and the text as
-        printed (innerText: after text-transform, unlike text read back from letter-spaced PDF glyphs)."""
+        printed (innerText: after text-transform, unlike text read back from letter-spaced PDF glyphs).
+        `kind="html"` is a whole page of its own (render-html --trusted): no house lint, `paper` sizes
+        it unless it sets @page size."""
         if kind == "deck":
             viewport = {"width": 1920, "height": 1080}
         else:
@@ -141,10 +143,11 @@ class Renderer:
             page.goto(html.resolve().as_uri(), wait_until="load")
             # load every vendored face, including those only the print margin boxes use
             page.evaluate("Promise.all([...document.fonts].map((f) => f.load())).then(() => document.fonts.ready).then(() => true)")
-            problems = page.evaluate(DECK_LINT if kind == "deck" else PAGE_LINT)
-            text = page.evaluate("document.body.innerText")
+            problems = page.evaluate(DECK_LINT if kind == "deck" else PAGE_LINT) if kind != "html" else []
+            text = page.evaluate("document.body ? document.body.innerText : ''")
+            size = {"format": "Letter" if paper == "letter" else "A4"} if kind == "html" else {}
             page.pdf(path=str(out), prefer_css_page_size=True, print_background=True,
-                     outline=kind != "deck", tagged=True)
+                     outline=kind in ("memo", "document"), tagged=True, **size)
         finally:
             page.close()
         return problems, text
