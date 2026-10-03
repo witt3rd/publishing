@@ -296,7 +296,7 @@ def test_markitdown_is_the_pinned_version():
 
 # --- PDF structure: pages (form feeds) and paragraphs survive, for Chromium output and forms -----
 
-SAMPLES = Path(__file__).resolve().parent.parent / "docs" / "samples"
+SAMPLES = Path(__file__).resolve().parent / "fixtures"  # Chromium-made, copies of docs/samples
 
 
 def _pdf_pages(pages: list[list[tuple[int, int, str]]]) -> bytes:

@@ -73,7 +73,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   line, figures, footnotes and highlighted code.
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.5.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.5.1"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
