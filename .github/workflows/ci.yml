@@ -8,12 +8,13 @@ jobs:
   test:
     name: tests and the samples rebuild from source
     runs-on: ubuntu-latest
+    env: { OFFICE_PDF_TESTS: "1" }   # the real conversion, with the glibc build
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: uv sync --locked --all-extras
-      - run: uv run publishing setup --with-deps --video
+      - run: uv run publishing setup --with-deps --video --convert
       # User-content mode runs Chromium with its sandbox on, which needs unprivileged user namespaces;
       # Ubuntu 24.04 restricts them through AppArmor (docs/user-content.md, "Hosts").
       - name: allow unprivileged user namespaces (Chromium's sandbox)
@@ -31,6 +32,26 @@ jobs:
       - name: the host's user-namespace setting (left as the runner has it)
         run: sysctl kernel.apparmor_restrict_unprivileged_userns || true
       - run: tools/usercontent-check.sh
+
+  convert:
+    name: convert profile on Alpine, real conversion with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.convert --target test -t publishing-convert:ci .
+      - run: docker run --rm --network none publishing-convert:ci
+      - run: docker build -f Dockerfile.convert -t publishing-convert:run .
+      - name: the image converts a file it is given, and nothing reaches the network
+        run: |
+          set -euo pipefail
+          mkdir -p work && chmod 777 work
+          python3 - <<'EOF'
+          import base64, re
+          src = open("tests/test_convert_integration.py").read()
+          open("work/fixture.docx", "wb").write(base64.b64decode("".join(re.findall(r'"(UEsD[^"]+)"', src))))
+          EOF
+          docker run --rm --network none -v "$PWD/work:/work" publishing-convert:run fixture.docx
+          test "$(head -c 5 work/fixture.pdf)" = "%PDF-"
 
   image:
     name: the container image renders headless and reproduces its own bytes
@@ -56,3 +77,13 @@ jobs:
             --memory 2g --pids-limit 512 -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" \
             publishing:ci html /in/page.html -o /out/page.pdf --json
           test -s pdf/page.pdf
+      - name: Office to PDF in the same image, with no network
+        run: |
+          python3 - <<'EOF'
+          import base64, re
+          src = open("tests/test_convert_integration.py").read()
+          open("doc/fixture.docx", "wb").write(base64.b64decode("".join(re.findall(r'"(UEsD[^"]+)"', src))))
+          EOF
+          docker run --rm --user 65532:65532 --network none -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" \
+            publishing:ci convert /in/fixture.docx -o /out/fixture.pdf
+          test "$(head -c 5 pdf/fixture.pdf)" = "%PDF-"

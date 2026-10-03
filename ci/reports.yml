@@ -16,7 +16,7 @@ jobs:
             P="uvx --from publishing[video]@git+https://github.com/witt3rd/publishing@v$V publishing"
             $P setup --with-deps --video
           else
-            P="uvx --from git+https://github.com/witt3rd/publishing@v$V publishing"
+            P="uvx --from publishing[render]@git+https://github.com/witt3rd/publishing@v$V publishing"
             $P setup --with-deps
           fi
           $P check

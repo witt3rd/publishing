@@ -1,0 +1,62 @@
+# The convert profile on Alpine (musl): `publishing convert` and the pinned office2pdf, with no
+# Playwright, no Chromium and no fonts. The contract is README "Convert".
+#
+#   docker build -f Dockerfile.convert -t publishing-convert .
+#   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-convert report.docx
+#
+# The `test` stage runs the convert tests, the real conversion included (CI: with no network):
+#
+#   docker build -f Dockerfile.convert --target test -t publishing-convert-test .
+#   docker run --rm --network none publishing-convert-test
+#
+# Pinned: the base images by digest, the Python tool by uv.lock, office2pdf by version and sha256 in
+# src/publishing/convert.py (`publishing setup --convert` checks both checksums). In an existing
+# Alpine image (the venue's node:22-alpine) the same two steps are, with python3 from apk:
+#   uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.3.0'
+#   publishing setup --convert --bin-dir /usr/local/bin
+FROM ghcr.io/astral-sh/uv:0.12.22@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc AS uv
+
+FROM python:3.13-alpine@sha256:2dd78ad5cf13a0b68f5134dc49aa9950203a8cf4b7463431b9f3b398287c5059 AS convert
+LABEL org.opencontainers.image.title="publishing-convert" \
+      org.opencontainers.image.description="Office files (.docx, .xlsx, .pptx) to PDF: publishing's convert profile" \
+      org.opencontainers.image.source="https://github.com/witt3rd/publishing" \
+      org.opencontainers.image.licenses="MIT"
+
+ENV UV_PYTHON_DOWNLOADS=never UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/publishing/venv \
+    PATH=/opt/publishing/venv/bin:$PATH \
+    OFFICE2PDF_BIN=/usr/local/bin/office2pdf \
+    HOME=/tmp
+
+# uv is mounted for the build only; the installed wheel does not need its source tree.
+WORKDIR /opt/publishing/src
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src ./src
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --no-dev --extra convert --no-editable \
+    && publishing setup --convert --bin-dir /usr/local/bin \
+    && ! python -c "import playwright" 2>/dev/null \
+    && rm -rf /opt/publishing/src /tmp/* /root/.cache \
+    && chmod -R a+rX /opt/publishing \
+    && publishing --version && office2pdf --version
+
+WORKDIR /work
+USER 65532:65532
+ENTRYPOINT ["publishing", "convert"]
+CMD ["--help"]
+
+# The convert tests in the image they describe: the stand-in tests and the real conversion.
+FROM convert AS test
+USER root
+WORKDIR /opt/publishing/src
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src ./src
+COPY tests ./tests
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --extra convert --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
+USER 65532:65532
+ENV OFFICE_PDF_TESTS=1
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_convert.py", "tests/test_convert_integration.py"]
+CMD []
+
+FROM convert

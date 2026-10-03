@@ -1,7 +1,11 @@
-"""publishing new | build | check | publish | setup | compare | html
+"""publishing new | build | check | publish | setup | compare | html | convert
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
-check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken."""
+check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
+
+Install profiles: `render` (everything but convert: Playwright and Chromium; `video` adds to it) and
+`convert` (Office to PDF: the standard library and office2pdf). This module imports in either; a render
+command run in the convert profile says how to install the render profile (exit 3)."""
 import argparse
 import html
 import json
@@ -13,12 +17,29 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, pdf, video
-from .build import MARKERS, BuildError, build, check, deck_html, discover, resolve
+from . import __version__, convert
 from .config import ConfigError, load
-from .publish import PublishError, publish
-from .render import Renderer, ToolchainError
-from .usercontent import Limits, UserContentError, UserContentRenderer, render_html
+
+# The top-level modules the render extra (pyproject.toml) installs.
+RENDER_MODULES = {"playwright", "greenlet", "pyee", "markdown_it", "mdit_py_plugins", "mdurl", "pygments",
+                  "pypdf", "pypdfium2", "PIL"}
+try:
+    from . import pdf, video
+    from .build import MARKERS, BuildError, build, check, deck_html, discover, resolve
+    from .publish import PublishError, publish
+    from .render import Renderer, ToolchainError
+    from .usercontent import Limits, UserContentError, UserContentRenderer, render_html
+    NO_RENDER = None
+except ModuleNotFoundError as e:  # the convert profile: the render extra is not installed
+    if (e.name or "").split(".")[0] not in RENDER_MODULES:
+        raise
+    NO_RENDER = e
+
+    class BuildError(Exception):
+        """Stands in for build.BuildError, which the convert profile cannot import."""
+
+    class ToolchainError(Exception):
+        """Stands in for render.ToolchainError, which the convert profile cannot import."""
 
 REPO = "https://github.com/witt3rd/publishing"
 FORMATS = ("deck", "memo", "document", "video")
@@ -35,7 +56,7 @@ def _pinned(cfg, argv) -> None:
         return
     docs = cfg.root / "docs"
     videos = cfg.path is not None and docs.is_dir() and any(docs.rglob("video.html"))
-    spec = f"publishing[video] @ git+{REPO}@v{cfg.pin}" if videos else f"git+{REPO}@v{cfg.pin}"
+    spec = f"publishing[{'render,video' if videos else 'render'}] @ git+{REPO}@v{cfg.pin}"
     cmd = ["uvx", "--from", spec, "publishing", *argv]
     if os.environ.get("PUBLISHING_PINNED") or not shutil.which("uvx"):
         print(f"publishing: {cfg.path} pins {cfg.pin}, this is {__version__}. Run: {' '.join(cmd)}", file=sys.stderr)
@@ -142,7 +163,21 @@ def cmd_publish(a) -> int:
     return 0
 
 
+def _no_render(what: str):
+    """Exit 3: `what` needs the render profile and this install is the convert profile."""
+    print(f"publishing: {what} needs the render profile (Playwright and Chromium), which is not installed "
+          f"({NO_RENDER}).\n  Install it: uv tool install 'publishing[render] @ git+{REPO}@v{__version__}'",
+          file=sys.stderr)
+    sys.exit(3)
+
+
 def cmd_setup(a) -> int:
+    if a.convert:
+        code = convert.setup(a.bin_dir)
+        if code or not a.render:
+            return code
+    if NO_RENDER:
+        _no_render("setup --render")
     cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
     if a.with_deps:
         cmd.insert(4, "--with-deps")
@@ -237,14 +272,14 @@ def _rel(p: Path) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="publishing", description="House-style decks, memos and documents to PDF, "
-                                 "and videos to MP4. Report rules: ~/Documents/AGENTS.md.")
+                                 "videos to MP4, Office files to PDF. Report rules: ~/Documents/AGENTS.md.")
     ap.add_argument("--version", action="version", version=f"publishing {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("new", help="scaffold docs/<kind>/<topic>-v1/")
     p.add_argument("folder")
     p.add_argument("--format", choices=FORMATS, default="deck")
-    p.set_defaults(fn=cmd_new)
+    p.set_defaults(fn=cmd_new, needs_render=False)
 
     for name, fn, hlp in (("build", cmd_build, "build PDFs (and MP4s) beside their sources"),
                           ("check", cmd_check, "fail unless every PDF and MP4 matches a fresh build of its source")):
@@ -266,10 +301,13 @@ def main(argv=None) -> int:
     p.add_argument("--name", help="published name without extension (kebab-case, -vN)")
     p.set_defaults(fn=cmd_publish)
 
-    p = sub.add_parser("setup", help="install the pinned Chromium (and HyperFrames) into the user cache")
-    p.add_argument("--with-deps", action="store_true", help="also the OS libraries (CI; needs sudo)")
+    p = sub.add_parser("setup", help="install the pinned Chromium (and HyperFrames, office2pdf) into the user cache")
+    p.add_argument("--render", action="store_true", help="the pinned Chromium (the default without --convert)")
+    p.add_argument("--with-deps", action="store_true", help="also Chromium's OS libraries (CI; needs sudo)")
     p.add_argument("--video", action="store_true", help="also the pinned HyperFrames, for videos (the video extra)")
-    p.set_defaults(fn=cmd_setup)
+    p.add_argument("--convert", action="store_true", help=f"the pinned office2pdf {convert.VERSION}, checksummed")
+    p.add_argument("--bin-dir", metavar="DIR", help="install office2pdf as DIR/office2pdf (default: the user cache)")
+    p.set_defaults(fn=cmd_setup, needs_render=False)
 
     p = sub.add_parser("compare", help="a deck of two PDFs' pages side by side (before/after)")
     p.add_argument("old")
@@ -298,7 +336,16 @@ def main(argv=None) -> int:
     p.add_argument("--json", action="store_true", help="print the result as one JSON line")
     p.set_defaults(fn=cmd_html)
 
+    p = sub.add_parser("convert", help="an Office file (.docx, .xlsx, .pptx) to a PDF, through office2pdf",
+                       description="Exit codes: 0 converted (stdout: the PDF's path); 1 the conversion failed; "
+                       "2 usage; 3 no converter (OFFICE2PDF_BIN, or `publishing setup --convert`).")
+    convert.add_arguments(p)
+
     a = ap.parse_args(argv)
+    if a.cmd == "setup":
+        a.render = a.render or a.video or not a.convert
+    if NO_RENDER and getattr(a, "needs_render", True):
+        _no_render(a.cmd)
     try:
         return a.fn(a)
     except ConfigError as e:

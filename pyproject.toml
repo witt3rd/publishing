@@ -1,12 +1,20 @@
 [project]
 name = "publishing"
-version = "0.2.0"
-description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4"
+version = "0.3.0"
+description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, Office files to PDF"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
+# Install profiles are extras: `publishing[render]` builds decks, memos and documents (Playwright and
+# Chromium); `publishing[video]` adds videos to it; `publishing[convert]` turns Office files into PDFs
+# with the standard library and the office2pdf binary that `publishing setup --convert` installs
+# (pinned in src/publishing/convert.py). The convert profile needs neither Playwright nor Chromium, so
+# it installs on musl (Alpine).
+dependencies = []
+
+[project.optional-dependencies]
 # Exact pins: the tool's version is the rendering contract, so its renderer is pinned too.
-dependencies = [
+render = [
   "playwright==1.63.0",     # Chromium build 1243
   "markdown-it-py==4.2.0",
   "mdit-py-plugins==0.6.1",
@@ -15,11 +23,10 @@ dependencies = [
   "pypdfium2==5.13.0",
   "pillow==12.3.0",
 ]
-
-[project.optional-dependencies]
-# The video format: HyperFrames runs on this Node (>=22); its own version is pinned in
-# src/publishing/video/package-lock.json and installed by `publishing setup --video`.
-video = ["nodejs-wheel-binaries==24.19.0"]
+# The video format: the render profile, and HyperFrames on this Node (>=22); HyperFrames' own version is
+# pinned in src/publishing/hyperframes/package-lock.json and installed by `publishing setup --video`.
+video = ["publishing[render]", "nodejs-wheel-binaries==24.19.0"]
+convert = []
 
 [project.scripts]
 publishing = "publishing.cli:main"
