@@ -53,6 +53,22 @@ jobs:
           docker run --rm --network none -v "$PWD/work:/work" publishing-convert:run fixture.docx
           test "$(head -c 5 work/fixture.pdf)" = "%PDF-"
 
+  extract:
+    name: extract profile in a container, with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.extract --target test -t publishing-extract:ci .
+      - run: docker run --rm --network none publishing-extract:ci
+      - run: docker build -f Dockerfile.extract -t publishing-extract:run .
+      - name: the image extracts a file it is given, and nothing reaches the network
+        run: |
+          set -euo pipefail
+          mkdir -p work && chmod 777 work
+          printf '<h1>Hello</h1><p>World</p>' > work/in.html
+          docker run --rm --network none -v "$PWD/work:/work" publishing-extract:run in.html
+          grep -q '^# Hello' work/in.md
+
   image:
     name: the container image renders headless and reproduces its own bytes
     runs-on: ubuntu-latest
