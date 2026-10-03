@@ -87,7 +87,8 @@ def test_the_request_filter_alone_blocks_the_network(tmp_path, server, monkeypat
     monkeypatch.setattr(usercontent, "netns_available", lambda: False)
     src = page(tmp_path / "doc", f'<p>Text.</p><img src="{url}/img.png"><iframe src="{url}/frame"></iframe>'
                f'<script>fetch("{url}/fetch"); new WebSocket("{url.replace("http", "ws")}/ws");</script>',
-               head=f'<link rel="stylesheet" href="{url}/style.css"><meta http-equiv="refresh" content="0; url={url}/r">')
+               head=f'<link rel="stylesheet" href="{url}/style.css">'
+               f'<meta http-equiv="refresh" content="0; url={url}/r">')
     result, _ = usercontent._render(src, src.parent, "/doc/index.html", kind="html", paper="letter",
                                     limits=Limits(allow_js=True), csp=False)
     time.sleep(0.5)

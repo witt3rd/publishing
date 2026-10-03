@@ -80,8 +80,9 @@ class Result:
 
 # ---------------------------------------------------------------- the parent: supervise one render
 
-def render_html(src: Path, out: Path, *, paper: str = "letter", limits: Limits = Limits()) -> Result:
+def render_html(src: Path, out: Path, *, paper: str = "letter", limits: Limits | None = None) -> Result:
     """Render a person's HTML file to `out` (never overwritten). Its folder is all it can load."""
+    limits = limits or Limits()
     src, out = Path(src).resolve(), Path(out)
     if out.exists():
         raise UserContentError(f"{out} exists; never overwrite")
@@ -100,8 +101,8 @@ class UserContentRenderer:
 
     untrusted = True
 
-    def __init__(self, limits: Limits = Limits()):
-        self.limits = limits
+    def __init__(self, limits: Limits | None = None):
+        self.limits = limits or Limits()
         self._root: Path | None = None
         self.results: list[Result] = []
 
@@ -368,6 +369,13 @@ def _child(job_path: str) -> int:
     blocked: list[str] = []
 
     def handle(route):
+        try:
+            serve(route)
+        except Exception:  # a file that vanished, a closed page: refuse rather than leave it hanging
+            blocked.append(route.request.url)
+            route.abort("blockedbyclient")
+
+    def serve(route):
         req = route.request
         url = req.url
         if req.is_navigation_request():
@@ -425,13 +433,12 @@ def _child(job_path: str) -> int:
                           ".then(() => document.fonts.ready).then(() => true)")  # a refused font is no error
             height = page.evaluate("document.documentElement.scrollHeight")
             if height / viewport["height"] > 2 * lim.max_pages:  # far past it: stop before laying out print
-                raise _Limit(f"about {height // viewport['height']} pages, over the page limit of "
-                                   f"{lim.max_pages}")
+                raise _Limit(f"about {height // viewport['height']} pages, over the page limit of {lim.max_pages}")
             problems = page.evaluate(DECK_LINT if kind == "deck" else PAGE_LINT) if kind != "html" else []
             text = page.evaluate("document.body ? document.body.innerText : ''")
-            opts = {"format": job["paper"].capitalize() if job["paper"] == "letter" else "A4"} if kind == "html" else {}
-            page.pdf(path=job["out"], prefer_css_page_size=True, print_background=True,
-                     outline=kind in ("memo", "document"), tagged=True, page_ranges=f"1-{lim.max_pages + 1}", **opts)
+            paper = {"format": "Letter" if job["paper"] == "letter" else "A4"} if kind == "html" else {}
+            page.pdf(path=job["out"], prefer_css_page_size=True, print_background=True, tagged=True,
+                     outline=kind in ("memo", "document"), page_ranges=f"1-{lim.max_pages + 1}", **paper)
             if state["over"]:
                 raise _Limit(f"the page loads more than the input limit of {lim.max_bytes} bytes")
             browser.close()
