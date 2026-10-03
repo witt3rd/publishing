@@ -1,4 +1,4 @@
-"""publishing new | build | check | publish | setup | compare | html | convert
+"""publishing new | build | check | publish | setup | compare | html | convert | extract
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -17,7 +17,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert
+from . import __version__, convert, extract
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -340,6 +340,11 @@ def main(argv=None) -> int:
                        description="Exit codes: 0 converted (stdout: the PDF's path); 1 the conversion failed; "
                        "2 usage; 3 no converter (OFFICE2PDF_BIN, or `publishing setup --convert`).")
     convert.add_arguments(p)
+
+    p = sub.add_parser("extract", help="a document (pdf, docx, pptx, xlsx, html, csv, json, xml, epub) to markdown, through markitdown",
+                       description="Exit codes: 0 extracted (stdout: the markdown's path); 1 the extraction failed or found no text; "
+                       "2 usage; 3 markitdown is not installed (the `extract` extra). Makes no network calls.")
+    extract.add_arguments(p)
 
     a = ap.parse_args(argv)
     if a.cmd == "setup":

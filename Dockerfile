@@ -1,8 +1,8 @@
 # The publishing toolbox image: one CLI (`publishing`, the entrypoint) and its pinned renderers,
 # for services and CI that render headless. The contract is in README "Services".
 #
-#   docker build -t publishing:0.3.0 .
-#   docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.3.0 build docs/samples/house-style-video-v1
+#   docker build -t publishing:0.4.0 .
+#   docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.4.0 build docs/samples/house-style-video-v1
 #
 # Pinned: the base images by digest, the Python tool and its Node by uv.lock, HyperFrames by
 # src/publishing/hyperframes/package-lock.json, Chromium by Playwright (in uv.lock), the fonts
@@ -34,7 +34,7 @@ RUN apt-get update \
 WORKDIR /opt/publishing/src
 COPY pyproject.toml uv.lock README.md LICENSE NOTICE ./
 COPY src ./src
-RUN uv sync --locked --no-dev --extra video --extra convert --no-editable \
+RUN uv sync --locked --no-dev --extra video --extra convert --extra extract --no-editable \
     && publishing setup --with-deps --video --convert --bin-dir /usr/local/bin \
     && rm -rf /var/lib/apt/lists/* /tmp/* /opt/publishing/cache/npm \
     && chmod -R a+rX /opt/publishing \

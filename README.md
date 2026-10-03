@@ -2,7 +2,7 @@
 
 Shared house-style publishing toolchain: decks, memos and long documents from markdown/Python to PDF,
 and short videos from HTML to MP4, with one look, one set of vendored fonts and one pinned Chromium
-render; and Office files to PDF through a pinned office2pdf, with no browser. Every repo that produces
+render; Office files to PDF through a pinned office2pdf and documents to markdown through a pinned markitdown, neither with a browser. Every repo that produces
 reports pins a version of this tool and proves in CI that each committed PDF and MP4 rebuilds from its
 source.
 
@@ -16,16 +16,19 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.3.0'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.4.0'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.3.0'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.4.0'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.3.0'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.4.0'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
+
+# extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.4.0'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -42,6 +45,7 @@ publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes
 publishing html PAGE.html -o OUT.pdf [--json]   # a person's HTML to PDF: always user-content mode
 publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
 publishing convert report.docx [-o report.pdf]  # an Office file to a PDF (the convert profile; see Convert)
+publishing extract report.pdf [-o report.md]    # a document to markdown (the extract profile; see Extract)
 ```
 
 **User content.** Anything made from a person's content renders in user-content mode: Chromium's
@@ -63,7 +67,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   line, figures, footnotes and highlighted code.
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.3.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.4.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -142,21 +146,57 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   else `~/.cache/publishing`) for the pinned install; `TMPDIR` for the temporary folder;
   `OFFICE_PDF_TESTS=1` makes the real-conversion test run, and fail without a converter.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.3.0 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.4.0 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.3.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.4.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+
+## Extract
+
+`publishing extract SRC [-o OUT] [--timeout SECONDS] [--max-bytes N]`, or from Python
+`publishing.extract.extract(src, dest=None, *, timeout=60, max_bytes=32 MiB) -> Path` (it raises an
+`ExtractError` subclass whose `exit_code` is the command's). It is the headless entry for ingestion:
+
+- **In.** A local file named `.pdf`, `.docx`, `.pptx`, `.xlsx`, `.html`, `.htm`, `.csv`, `.json`, `.xml`,
+  `.epub` or `.txt`, in any letter case. Nothing else is tried (exit 2). **Images and audio are not
+  extracted:** markitdown reads them through exiftool, a speech service or an LLM, which this profile
+  neither has nor may call. URLs are not accepted, only files.
+- **Out.** One markdown file at `OUT`, by default beside `SRC` with the suffix `.md`; its path is the
+  only line on stdout. An existing file is never overwritten (exit 2). On any failure there is no `OUT`.
+- **Extractor.** [markitdown](https://github.com/microsoft/markitdown) `0.1.8` (MIT), pinned exactly in
+  the `extract` extra with its PDF, DOCX, PPTX and XLSX parsers; everything under it is pinned by
+  `uv.lock`. The extra needs neither Playwright nor Chromium. Run `uv tool install` / `uv sync` from the
+  lock, or a bare `pip install 'publishing[extract]'` for the same top-level pins.
+- **No network.** markitdown runs in a child interpreter through `convert_local`, with plugins off, no
+  LLM client and no exiftool, after every socket connect and name lookup has been replaced by an error.
+  A link or image URL in a document is text, never a request. The test suite proves it with a local
+  server that must see no hit, and CI runs the image with `--network none`.
+- **Limits.** The child is stopped after `--timeout` seconds (default 60) or as soon as its output passes
+  `--max-bytes` (default 33554432). Neither changes an extraction that stays inside them.
+- **Errors** (stderr, `publishing: ` and one message). A failing parser carries at most 400 characters
+  (`Type: message`), or `markitdown failed (<status>)` when it wrote none; an empty or whitespace-only
+  result is an error (`found no text`: a scanned PDF has no text layer, and there is no OCR); so is a
+  time-out or an output over the cap.
+- **Exit codes.** 0 extracted; 1 the extraction failed or found no text; 2 usage (unsupported type, no
+  such source, the output exists, a bad option); 3 markitdown is not installed (`publishing[extract]`).
+- **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
+- **Containers.** The toolbox image carries the extract extra:
+  `docker run … publishing:0.4.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
+  CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
+  publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
+  Debian slim (glibc). Spire's venue: [docs/spire-extract-migration.md](docs/spire-extract-migration.md).
 
 ## Services
 
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.3.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.3.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.3.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.3.0 \
+docker build -t publishing:0.4.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.4.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.4.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.4.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 
@@ -175,7 +215,7 @@ docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:
   `HYPERFRAMES_FFPROBE_PATH` (default: the `PATH`), `PUBLISHING_DOCUMENTS` (`publish`'s root, default
   `~/Documents`). No network is needed at build time.
 - **The image** (`Dockerfile`): Debian bookworm slim by digest, uv, the tool from `uv.lock` with the
-  `video` and `convert` extras, Chromium and its OS libraries, HyperFrames and office2pdf from
+  `video`, `convert` and `extract` extras, Chromium and its OS libraries, HyperFrames and office2pdf from
   `publishing setup --with-deps --video --convert`, Debian's ffmpeg, fontconfig; the house fonts are vendored in the package. It runs as any user (`--user`) and
   writes only to the mounted outputs and `/tmp`. User-content mode (`html`, `--user-content`) runs in the
   same image under the locked-down flags in [docs/user-content.md](docs/user-content.md) "Containers";
