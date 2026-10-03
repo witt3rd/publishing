@@ -221,10 +221,11 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
                 work.write_text(_page_html(s, cfg, found))
                 problems, text = r.pdf(work, out, kind=s.kind, paper=s.paper)
         text += "\n" + "\n".join(_furniture(s, cfg))  # the running header and footer are CSS strings
-    hosts = sorted(f for f in pdf.fonts(out) if not f.startswith("Noto"))
+    hosts = sorted(f for f in pdf.fonts(out) if not f.startswith("Publishing"))
     if hosts:
         problems.append(f"host font used (not vendored, so other hosts render differently): {', '.join(hosts)}"
-                        " - an <img> SVG with text, or a glyph outside the house fonts")
+                        " - a generic family such as sans-serif (name one: Publishing Sans, Noto Sans, Arial...), or a glyph"
+                        " outside the house fonts")
     problems = problems + scan.scan(text, words=cfg.words if s.words else (), allow=cfg.allow, days=s.days)
     work.unlink()
     return problems

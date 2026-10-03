@@ -22,7 +22,7 @@ def test_scaffold_builds_and_checks_current(repo, renderer, fmt, pages):
     s = resolve(folder, cfg)
     assert build(s, cfg, renderer) == "built"
     assert pdf.pages(s.pdf) == pages
-    assert pdf.fonts(s.pdf) and all(f.startswith("Noto") for f in pdf.fonts(s.pdf))
+    assert pdf.fonts(s.pdf) and all(f.startswith("Publishing") for f in pdf.fonts(s.pdf))
     assert build(s, cfg, renderer) == "current"  # same words and pages: left untouched
     assert check(s, cfg, renderer) is None
 
@@ -122,3 +122,18 @@ def test_compare_puts_pages_side_by_side(repo, renderer, tmp_path):
     assert pdf.pages(out) == 3 and "Second improvement." in pdf.text(out)
     with pytest.raises(SystemExit, match="never overwrite"):
         main(args)
+
+
+@pytest.mark.parametrize("family,ok", [("Noto Sans", True), ("Liberation Serif", True), ("sans-serif", False)])
+def test_named_families_use_vendored_faces_and_generic_ones_fail(repo, renderer, family, ok):
+    folder = new(repo, "fig-v1", "memo")
+    (folder / "fig.svg").write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40">'
+                                    f'<text x="10" y="30" font-family="{family}">Label</text></svg>')
+    (folder / "memo.md").write_text("# Fig\n\n![A figure](fig.svg)\n")
+    cfg = load(folder)
+    s = resolve(folder, cfg)
+    if ok:
+        assert build(s, cfg, renderer) == "built"
+    else:
+        with pytest.raises(BuildError, match="host font used"):
+            build(s, cfg, renderer)
