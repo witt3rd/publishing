@@ -116,10 +116,10 @@ def test_compare_puts_pages_side_by_side(repo, renderer, tmp_path):
     notes = tmp_path / "notes.md"
     notes.write_text("- First improvement.\n- Second improvement.\n")
     out = tmp_path / "cmp-v1.pdf"
-    args = ["compare", str(a) + ".pdf", str(b) + ".pdf", "-o", str(out), "--pair", "1:1", "--pair", "2:2",
+    args = ["compare", str(a) + ".pdf", str(b) + ".pdf", "-o", str(out), "--pair", "1:1", "--pair", "2:2:The second page",
             "--notes", str(notes)]
     assert main(args) == 0
-    assert pdf.pages(out) == 3 and "Second improvement." in pdf.text(out)
+    assert pdf.pages(out) == 3 and "Second improvement." in pdf.text(out) and "The second page" in pdf.text(out)
     with pytest.raises(SystemExit, match="never overwrite"):
         main(args)
 

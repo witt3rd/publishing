@@ -23,7 +23,7 @@ publishing new docs/notes/topic-v1 [--format deck|memo|document]   # scaffold a 
 publishing build [SOURCE...] [--png DIR]   # build PDFs beside their sources (default: all under docs/)
 publishing check [PATH...]                 # fail unless every PDF matches a fresh build of its source
 publishing publish docs/notes/topic-v1     # copy the PDF to ~/Documents/<folder>/, never overwriting
-publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 1:1 --notes notes.md   # a before/after deck
+publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes.md   # before/after deck
 ```
 
 ## Conventions

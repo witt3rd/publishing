@@ -131,28 +131,31 @@ def cmd_compare(a) -> int:
     old, new, out = Path(a.old).resolve(), Path(a.new).resolve(), Path(a.output)
     if out.exists():
         sys.exit(f"publishing: {out} exists; never overwrite (bump the version)")
-    pairs = [tuple(int(x) for x in p.split(":")) for p in a.pair] or \
-        [(i, i) for i in range(1, min(pdf.pages(old), pdf.pages(new), 6) + 1)]
+    try:
+        pairs = [(int(p.split(":")[0]), int(p.split(":")[1]), p.split(":", 2)[2] if p.count(":") >= 2 else "")
+                 for p in a.pair] or [(i, i, "") for i in range(1, min(pdf.pages(old), pdf.pages(new), 6) + 1)]
+    except (ValueError, IndexError):
+        sys.exit("publishing: --pair is OLD:NEW or OLD:NEW:caption (page numbers from 1)")
     notes = Path(a.notes).read_text().splitlines() if a.notes else []
     points = [n[2:].strip() for n in notes if n.startswith(("- ", "* "))]
     cfg = load(Path.cwd())
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        imgs = {"old": pdf.png(old, tmp / "img" / "old", width=1300), "new": pdf.png(new, tmp / "img" / "new", width=1300)}
+        imgs = {"old": pdf.png(old, tmp / "img" / "old", width=1600), "new": pdf.png(new, tmp / "img" / "new", width=1600)}
         n_old, n_new = len(imgs["old"]), len(imgs["new"])
         d = Deck(tmp, out.stem)
         lab_old, lab_new = html.escape(a.old_label), html.escape(a.new_label)
         d.title(html.escape(a.kicker), html.escape(a.title), html.escape(a.subtitle), points,
                 f"{lab_old}: {n_old} pages · {lab_new}: {n_new} pages")
-        for po, pn in pairs:
+        for po, pn, cap in pairs:
             if not (1 <= po <= n_old and 1 <= pn <= n_new):
                 sys.exit(f"publishing: pair {po}:{pn} is out of range ({n_old} and {n_new} pages)")
             body = (f'<div class="pair"><figure><figcaption><b>{lab_old}</b> · page {po} of {n_old}</figcaption>'
                     f'<img src="{imgs["old"][po - 1].relative_to(tmp)}"></figure>'
                     f'<figure><figcaption><b>{lab_new}</b> · page {pn} of {n_new}</figcaption>'
                     f'<img src="{imgs["new"][pn - 1].relative_to(tmp)}"></figure></div>')
-            d.slide("Side by side", f"{lab_old} page {po}, {lab_new} page {pn}", "", body, "Same source, two renderers",
-                    cls="tight compare")
+            d.slide("Side by side", html.escape(cap) or f"{lab_old} page {po}, {lab_new} page {pn}", "", body,
+                    f"{lab_old} page {po} · {lab_new} page {pn}", cls="tight compare")
         page_html = deck_html(d.S, tmp, out.stem)
         work = tmp / "compare.html"
         work.write_text(page_html)
@@ -212,7 +215,8 @@ def main(argv=None) -> int:
     p.add_argument("old")
     p.add_argument("new")
     p.add_argument("-o", "--output", required=True)
-    p.add_argument("--pair", action="append", default=[], metavar="OLD:NEW", help="page pairs (default 1:1 .. 6:6)")
+    p.add_argument("--pair", action="append", default=[], metavar="OLD:NEW[:CAPTION]",
+                   help="page pairs, with an optional headline (default 1:1 .. 6:6)")
     p.add_argument("--notes", help="markdown file; its '- ' bullets go on the title page")
     p.add_argument("--title", default="Before and after")
     p.add_argument("--subtitle", default="The same source, rendered by the old and the new toolchain")

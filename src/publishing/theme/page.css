@@ -84,6 +84,7 @@ pre code { background: none; padding: 0; font-size: inherit; border-radius: 0; }
 /* Tables: sans, ruled like the deck, header repeats on every page. */
 table { border-collapse: collapse; width: 100%; margin: 6pt 0 4pt 0; font: 400 8.6pt/1.38 var(--sans); }
 thead { display: table-header-group; }
+table { break-inside: avoid; }  /* a table that fits on a page stays on one; a longer one breaks between rows */
 tr { break-inside: avoid; }
 th { text-align: left; font: 700 7.2pt/1.3 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink2);
   border-bottom: 1.25pt solid var(--ink); padding: 4pt 6pt; vertical-align: bottom; background: var(--paper); }
