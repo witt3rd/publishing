@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- The composition for {name}.mp4. Build: publishing build {rel}
+     Scenes are deck slides shown one after another; the theme (video.css) gives them the deck look.
+     Each scene is a clip: data-start and data-duration in seconds, on track 0. Motion is CSS animation:
+     .rise .fade .grow .pop, delayed by style="--at: 0.4s" (seconds after the scene starts), on HTML
+     elements only (HyperFrames does not seek an animated SVG shape; the build refuses one).
+     The root's data-duration is the video's length; data-fps its frame rate. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>{name}</title></head>
+<body>
+<div id="root" data-composition-id="root" data-no-timeline data-width="1920" data-height="1080"
+     data-fps="30" data-start="0" data-duration="9">
+
+  <section id="scene-title" class="slide title clip" data-start="0" data-duration="3" data-track-index="0">
+    <div class="kicker rise">{kicker}</div>
+    <h1 class="rise" style="--at: .2s">The answer, in one line</h1>
+    <h2 class="rise" style="--at: .5s">One sentence that says what this video shows.</h2>
+  </section>
+
+  <section id="scene-idea" class="slide clip" data-start="3" data-duration="3" data-track-index="0">
+    <div class="kicker">The idea</div>
+    <h1>One simple diagram</h1>
+    <div class="body">
+      <div class="flow" style="margin-top: 120px">
+        <div class="card pop" style="width: 380px"><h3>Before</h3><p>where we are</p></div>
+        <div class="arrow grow" style="--at: .5s"><span>the change</span></div>
+        <div class="card pop" style="width: 380px; --at: 1s; background: var(--accent-soft); border-color: var(--accent)">
+          <h3 style="color: var(--accent)">After</h3><p>where we land</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scene-ask" class="slide clip" data-start="6" data-duration="3" data-track-index="0">
+    <div class="kicker">The ask</div>
+    <h1>What we need decided</h1>
+    <div class="body stack">
+      <div class="q rise" style="--at: .3s"><h3><span>1.</span> The first question?</h3>
+        <p><b>Recommendation.</b> What we recommend, and what the answer changes.</p></div>
+    </div>
+  </section>
+</div>
+</body>
+</html>

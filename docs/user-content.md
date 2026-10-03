@@ -23,10 +23,12 @@ tests in a locked-down container, run in CI).
 `publishing html` options: `--paper letter|a4` (unless the page sets `@page size`), `--allow-js`,
 `--max-bytes`, `--max-pages`, `--timeout`, `--max-memory MB`, `--require-netns`, `--json` (one line:
 output, pages, the refused requests, `sandboxed`, `netns`). It never overwrites its output. Exit 0 is a
-PDF; exit 1 prints `publishing: <reason>` and writes nothing.
+PDF; exit 1 (the render failed) or 2 (usage: an existing output, a bad limit) prints
+`publishing: <reason>` and writes nothing.
 
 In a build, user-content mode renders memos and documents. A deck is refused: its `slides.py` is
-Python the tool runs, so a deck is trusted by definition. An SVG is inlined only from inside the
+Python the tool runs, so a deck is trusted by definition. A video is refused too: HyperFrames runs its
+HTML and script in a browser outside this sandbox. An SVG is inlined only from inside the
 document's folder; anything else stays an `<img>` whose fetch is refused, and the layout lint then
 fails the build with "image not found".
 
@@ -87,8 +89,11 @@ renderer, the Explainer, media production) must use:
 docker run --rm --user 65532:65532 --cap-drop ALL --security-opt no-new-privileges \
   --security-opt seccomp=ci/seccomp-chromium.json --network none --read-only --tmpfs /tmp \
   --memory 2g --pids-limit 512 -v "$DOC_DIR:/in:ro" -v "$OUT_DIR:/out" \
-  IMAGE publishing html /in/page.html -o /out/page.pdf --json
+  IMAGE html /in/page.html -o /out/page.pdf --json
 ```
+
+`IMAGE` is the toolbox image built from this repo's `Dockerfile` (README "Services"), whose entrypoint
+is `publishing`; CI's image job runs this exact command in it.
 
 | Flag | Why |
 |---|---|

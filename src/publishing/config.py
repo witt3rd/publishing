@@ -1,6 +1,6 @@
 """docs/report.toml: a repo's pin, project, scan words, publish folders and fixed documents.
 
-  publishing = "0.1.0"          # the tool version this repo builds with
+  publishing = "0.2.0"          # the tool version this repo builds with
   project = "Spire"             # default folder under ~/Documents for `publish`
   format = "pdf"                # "markdown": reports are the markdown itself; build refuses PDFs
   paper = "letter"              # memo/document default: "letter" or "a4"
@@ -12,6 +12,11 @@
 
   [publish]
   notes = "Spire/Design and evidence"   # docs/<kind>/ -> folder under ~/Documents
+
+  [video]
+  tolerance = 40                # dB PSNR: the least similarity a fresh render's frames may have to the
+                                # committed MP4's (another ffmpeg build encodes them differently);
+                                # identical frames always pass. See README "Video".
 
   [user_content]                # build every source here as untrusted (docs/user-content.md)
   enabled = true                # off unless true; `build --user-content` turns it on per run
@@ -35,7 +40,7 @@ from pathlib import Path
 
 from .usercontent import Limits, limits_from
 
-FORMATS = ("deck", "memo", "document")
+FORMATS = ("deck", "memo", "document", "video")
 PAPERS = ("letter", "a4")
 
 
@@ -65,6 +70,7 @@ class Config:
     allow: list = field(default_factory=list)
     days: bool = True
     publish: dict = field(default_factory=dict)
+    tolerance: float = 40.0
     documents: list = field(default_factory=list)
     user_content: Limits | None = None  # set: every build here renders in user-content mode
 
@@ -100,6 +106,10 @@ def load(start: Path) -> Config:
                  format=data.get("format", "pdf"), paper=data.get("paper", "letter"),
                  words=list(scan.get("words", [])), allow=list(scan.get("allow", [])),
                  days=bool(scan.get("days", True)), publish=dict(data.get("publish", {})))
+    try:
+        cfg.tolerance = float(data.get("video", {}).get("tolerance", cfg.tolerance))
+    except (TypeError, ValueError):
+        raise ConfigError(f"{path}: [video] tolerance is a number of dB (PSNR), such as 40") from None
     if cfg.format not in ("pdf", "markdown"):
         raise ConfigError(f"{path}: format must be \"pdf\" or \"markdown\", not {cfg.format!r}")
     if cfg.paper not in PAPERS:

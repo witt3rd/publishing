@@ -100,11 +100,12 @@ def test_fixed_document_path_and_markdown_repos(repo, renderer):
         build(resolve(repo / "docs" / "spire.md", load(repo)), load(repo), renderer)
 
 
-def test_pinned_version_mismatch_is_refused(repo, monkeypatch):
+def test_pinned_version_mismatch_is_refused(repo, monkeypatch, capsys):
     (repo / "docs" / "report.toml").write_text('publishing = "9.9.9"\n')
     monkeypatch.setenv("PUBLISHING_PINNED", "1")
-    with pytest.raises(SystemExit, match="pins 9.9.9"):
+    with pytest.raises(SystemExit) as e:
         main(["check", str(repo / "docs")])
+    assert e.value.code == 3 and "pins 9.9.9" in capsys.readouterr().err  # the toolchain, not the source
 
 
 def test_compare_puts_pages_side_by_side(repo, renderer, tmp_path):
@@ -120,8 +121,9 @@ def test_compare_puts_pages_side_by_side(repo, renderer, tmp_path):
             "--notes", str(notes)]
     assert main(args) == 0
     assert pdf.pages(out) == 3 and "Second improvement." in pdf.text(out) and "The second page" in pdf.text(out)
-    with pytest.raises(SystemExit, match="never overwrite"):
+    with pytest.raises(SystemExit) as e:
         main(args)
+    assert e.value.code == 2
 
 
 @pytest.mark.parametrize("family,ok", [("Noto Sans", True), ("Liberation Serif", True), ("sans-serif", False)])

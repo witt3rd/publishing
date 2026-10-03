@@ -11,8 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
-      - run: uv sync --locked
-      - run: uv run publishing setup --with-deps
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: uv sync --locked --all-extras
+      - run: uv run publishing setup --with-deps --video
       # User-content mode runs Chromium with its sandbox on, which needs unprivileged user namespaces;
       # Ubuntu 24.04 restricts them through AppArmor (docs/user-content.md, "Hosts").
       - name: allow unprivileged user namespaces (Chromium's sandbox)
@@ -21,6 +22,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - run: uv run pytest -q
       - run: uv run publishing check
+
   user-content-container:
     name: user-content mode in a locked-down container
     runs-on: ubuntu-latest
@@ -29,3 +31,28 @@ jobs:
       - name: the host's user-namespace setting (left as the runner has it)
         run: sysctl kernel.apparmor_restrict_unprivileged_userns || true
       - run: tools/usercontent-check.sh
+
+  image:
+    name: the container image renders headless and reproduces its own bytes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t publishing:ci .
+      - name: check every sample in the image (the service entry)
+        run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:ci check
+      - name: two renders in the image are byte-identical
+        run: |
+          mkdir -p out
+          for i in 1 2; do
+            docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:ci \
+              build docs/samples/house-style-video-v1 -o /work/out/render-$i.mp4
+          done
+          cmp out/render-1.mp4 out/render-2.mp4
+      - name: user-content mode in the same image, under docs/user-content.md's flags
+        run: |
+          mkdir -p doc pdf && chmod 777 pdf && echo '<p>Hello from a person.</p>' > doc/page.html
+          docker run --rm --user 65532:65532 --cap-drop ALL --security-opt no-new-privileges \
+            --security-opt seccomp="$PWD/ci/seccomp-chromium.json" --network none --read-only --tmpfs /tmp \
+            --memory 2g --pids-limit 512 -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" \
+            publishing:ci html /in/page.html -o /out/page.pdf --json
+          test -s pdf/page.pdf

@@ -4,6 +4,7 @@ A source is one of:
   <topic>-vN/slides.py     deck (TITLE and S, the page HTML); PDF is <topic>-vN.pdf beside the folder
   <topic>-vN/memo.md       memo (portrait, markdown)
   <topic>-vN/document.md   document (long form: cover, contents, running header)
+  <topic>-vN/video.html    video (a HyperFrames composition); the MP4 is <topic>-vN.mp4 (see video.py)
   <topic>-vN/source.txt    the PDF is a copy of one built elsewhere (not rebuilt)
   a [[document]] in report.toml: a markdown file with a fixed PDF path
 """
@@ -19,11 +20,14 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from . import markdown, pdf, scan
+from . import markdown, pdf, scan, video
 from .config import Config, Document
 from .render import Renderer
 
-MARKERS = {"slides.py": "deck", "memo.md": "memo", "document.md": "document", "source.txt": "copy"}
+MARKERS = {"slides.py": "deck", "memo.md": "memo", "document.md": "document", "video.html": "video",
+           "source.txt": "copy"}
+KINDS = ("deck", "memo", "document", "video", "copy")
+OUTPUTS = (".pdf", ".mp4")
 
 
 class BuildError(Exception):
@@ -32,9 +36,9 @@ class BuildError(Exception):
 
 @dataclass
 class Source:
-    kind: str  # deck | memo | document | copy
+    kind: str  # deck | memo | document | video | copy
     src: Path  # the folder, or the markdown file
-    pdf: Path
+    pdf: Path  # the output: a PDF, or for a video its MP4
     paper: str = "letter"
     days: bool = True
     words: bool = True
@@ -57,10 +61,11 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
     if target.is_dir():
         for marker, kind in MARKERS.items():
             if (target / marker).is_file():
-                s = Source(kind, target, target.parent / f"{target.name}.pdf", cfg.paper, cfg.days)
+                ext = ".mp4" if kind == "video" else ".pdf"
+                s = Source(kind, target, target.parent / f"{target.name}{ext}", cfg.paper, cfg.days)
                 break
         else:
-            raise BuildError(f"{target}: no slides.py, memo.md, document.md or source.txt")
+            raise BuildError(f"{target}: no slides.py, memo.md, document.md, video.html or source.txt")
     elif target.suffix == ".md":
         entry = cfg.document_for(target) or (cfg.documents_pdf(out) if out else None)
         if entry:  # a listed document, or a copy of one (a pre-commit hook renders the staged file)
@@ -70,8 +75,8 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
             meta, _ = markdown.front_matter(target.read_text())
             s = Source(fmt or meta.get("format", "memo"), target, target.with_suffix(".pdf"),
                        meta.get("paper", cfg.paper), cfg.days)
-    elif target.suffix == ".pdf":
-        entry = cfg.documents_pdf(target)
+    elif target.suffix in OUTPUTS:
+        entry = cfg.documents_pdf(target) if target.suffix == ".pdf" else None
         if entry:
             s = _from_entry(entry, cfg)
         elif target.with_suffix("").is_dir():
@@ -79,13 +84,15 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
         else:
             raise BuildError(f"{target.name}: no source folder {target.stem}/ and no [[document]] entry")
     else:
-        raise BuildError(f"{target}: not a source folder, a markdown file or a PDF")
+        raise BuildError(f"{target}: not a source folder, a markdown file, a PDF or an MP4")
+    if fmt and fmt != s.kind and "video" in (fmt, s.kind):
+        raise BuildError(f"{target}: a video is a folder with video.html; it does not convert to or from {fmt}")
     if fmt and s.kind != "copy":
         s.kind = fmt
     if out:
         s.pdf = out.resolve()
-    if s.kind not in ("deck", "memo", "document", "copy"):
-        raise BuildError(f"{target}: unknown format {s.kind!r} (deck, memo or document)")
+    if s.kind not in KINDS:
+        raise BuildError(f"{target}: unknown format {s.kind!r} (deck, memo, document or video)")
     if s.paper not in ("letter", "a4"):
         raise BuildError(f"{target}: paper must be letter or a4, not {s.paper!r}")
     return s
@@ -105,7 +112,7 @@ def discover(where: Path, cfg: Config) -> tuple[list[Source], list[Path]]:
         if d.source.is_relative_to(where) or d.pdf.is_relative_to(where):
             sources.append(_from_entry(d, cfg))
     targets = {s.pdf for s in sources}
-    orphans = [p for p in sorted(where.rglob("*.pdf"))
+    orphans = [p for ext in OUTPUTS for p in sorted(where.rglob(f"*{ext}"))
                if p.resolve() not in targets and not any(p.resolve().is_relative_to(f) for f in folders)]
     return sources, orphans
 
@@ -215,6 +222,11 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
         raise BuildError(f"{cfg.path}: format = \"markdown\": reports here are the markdown itself, not PDFs")
     if not s.src.exists():
         raise BuildError(f"{s.name}: its source {s.src} is missing")
+    if s.kind == "video" and r.untrusted:
+        raise BuildError(f"{s.name}: a video runs its HTML and script through HyperFrames outside the sandbox; "
+                         "user-content mode builds memos and documents only")
+    if s.kind == "video":
+        return video.render(s.src, cfg, out, r, words=s.words, days=s.days)
     work = out.parent / f".{out.stem}.html"
     if s.kind == "deck" and r.untrusted:
         raise BuildError(f"{s.name}: a deck's slides.py is code; user-content mode builds memos and documents only")
@@ -256,12 +268,18 @@ def build(s: Source, cfg: Config, r: Renderer, *, force: bool = False, png: Path
         if problems:
             raise BuildError(f"{s.name}: not written:\n  " + "\n  ".join(problems))
         if png:
-            pdf.png(fresh, png)
-        if not force and pdf.same(s.pdf, fresh):
+            video.png(fresh, png) if s.kind == "video" else pdf.png(fresh, png)
+        if not force and _same(s, fresh, cfg):
             return "current"
         s.pdf.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(fresh, s.pdf)
         return "built"
+
+
+def _same(s: Source, fresh: Path, cfg: Config) -> bool:
+    if s.kind == "video":
+        return video.is_mp4(s.pdf) and video.compare(s.pdf, fresh, cfg.tolerance) is None
+    return pdf.same(s.pdf, fresh)
 
 
 def check(s: Source, cfg: Config, r: Renderer) -> str | None:
@@ -270,13 +288,16 @@ def check(s: Source, cfg: Config, r: Renderer) -> str | None:
         return None if pdf.is_pdf(s.pdf) else f"{s.name}: missing (a copy; see {s.src.name}/source.txt)"
     if not s.pdf.is_file():
         return f"{s.name}: missing (build it: publishing build {s.src.name})"
-    if not pdf.is_pdf(s.pdf):
-        return f"{s.name}: not a PDF (an unfetched LFS pointer?)"
+    if not (video.is_mp4 if s.kind == "video" else pdf.is_pdf)(s.pdf):
+        return f"{s.name}: not {'an MP4' if s.kind == 'video' else 'a PDF'} (an unfetched LFS pointer?)"
     with tempfile.TemporaryDirectory() as tmp:
         fresh = Path(tmp) / s.pdf.name
         problems = render(s, cfg, fresh, r)
         if problems:
             return f"{s.name}: source fails the build:\n  " + "\n  ".join(problems)
+        if s.kind == "video":
+            bad = video.compare(s.pdf, fresh, cfg.tolerance)
+            return f"{s.name}: {bad}" if bad else None
         if pdf.pages(fresh) != pdf.pages(s.pdf):
             return f"{s.name}: stale ({pdf.pages(s.pdf)} pages committed, {pdf.pages(fresh)} from source)"
         if pdf.text(fresh) != pdf.text(s.pdf):

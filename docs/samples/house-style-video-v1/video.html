@@ -1,0 +1,111 @@
+<!doctype html>
+<!-- The house video: the house deck (house-style-deck-v1, its text and its diagram) as a short
+     narration-free explainer. Build: publishing build docs/samples/house-style-video-v1 -->
+<html lang="en">
+<head><meta charset="utf-8"><title>house-style-video-v1</title>
+<style>
+  .points { margin: 54px 0 0 0; padding-left: 36px; font-size: 30px; line-height: 1.45; color: #e6e7f0; max-width: 1560px; }
+  .points li { margin-bottom: 16px; }
+  .points b { color: #fff; }
+  .caption { margin-top: 80px; text-align: center; font-size: 28px; color: var(--ink2); }
+  .flow > .card { padding: 30px 26px; }
+  .flow > .card h3 { font-size: 34px; }
+  .flow > .card p { font-size: 25px; }
+  .checks td { font-size: 28px; padding: 20px 22px; }
+  .checks th { font-size: 19px; padding: 12px 22px; }
+  .steps .card { padding: 32px 34px; }
+  .steps .card h3 { font-size: 34px; margin-bottom: 16px; }
+  .steps .card p { font-size: 27px; }
+  .steps .num { font-size: 22px; font-weight: 700; color: var(--accent); letter-spacing: .1em; margin-bottom: 10px; }
+  .q h3 { font-size: 28px; } .q p { font-size: 24px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="root" data-no-timeline data-width="1920" data-height="1080"
+     data-fps="30" data-start="0" data-duration="37">
+
+  <section id="scene-title" class="slide title clip" data-start="0" data-duration="7" data-track-index="0">
+    <div class="kicker rise">Publishing · the house video</div>
+    <h1 class="rise" style="--at: .2s">One look for every report, from one pinned tool</h1>
+    <h2 class="rise" style="--at: .6s">Decks, memos and long documents share one theme, one set of vendored fonts and one
+      Chromium render. A video now joins them, made the same way.</h2>
+    <ol class="points">
+      <li class="rise" style="--at: 1.6s"><b>The deck</b> is pages of HTML written in Python, for findings and designs.</li>
+      <li class="rise" style="--at: 2.2s"><b>The memo</b> is portrait markdown with a title block, tables and figures.</li>
+      <li class="rise" style="--at: 2.8s"><b>The document</b> is long-form markdown with a cover and contents.</li>
+      <li class="rise" style="--at: 3.4s"><b>The video</b> is scenes of HTML that move, rendered frame by frame to an MP4.</li>
+    </ol>
+    <div class="rule"></div><div class="foot"><span>From the house deck sample</span><span>1 / 5</span></div>
+  </section>
+
+  <section id="scene-idea" class="slide clip" data-start="7" data-duration="8" data-track-index="0">
+    <div class="kicker">The idea</div>
+    <h1>Sources live in the repo; the tool owns the look</h1>
+    <h2>A repo holds its sources and what is built from them. The tool holds the theme, the fonts and the render.</h2>
+    <div class="body middle">
+      <div class="flow">
+        <div class="card pop" style="width: 320px"><h3>Source</h3><p>slides, markdown, HTML</p></div>
+        <div class="arrow grow" style="--at: .9s"><span>build</span></div>
+        <div class="card pop" style="width: 350px; --at: 1.5s; background: var(--accent-soft); border-color: var(--accent)">
+          <h3 style="color: var(--accent)">publishing</h3><p>theme, fonts, Chromium</p></div>
+        <div class="arrow grow" style="--at: 2.4s"><span>lint, scan</span></div>
+        <div class="card pop" style="width: 290px; --at: 3s"><h3>PDF or MP4</h3><p>checked by CI</p></div>
+        <div class="arrow grow" style="--at: 3.9s"><span>publish</span></div>
+        <div class="card pop" style="width: 230px; --at: 4.5s"><h3>A copy</h3><p>for review</p></div>
+      </div>
+      <p class="caption fade" style="--at: 5.4s">One tool, pinned by version in each repo. The repo owns its sources and outputs.</p>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Diagram: the house deck's, redrawn to move</span><span>2 / 5</span></div>
+  </section>
+
+  <section id="scene-checks" class="slide clip" data-start="15" data-duration="9" data-track-index="0">
+    <div class="kicker">What a build checks</div>
+    <h1>Nothing is written until it passes the lint and the scan</h1>
+    <h2>A problem stops the build; the file is not written.</h2>
+    <div class="body middle">
+      <table class="checks">
+        <tr><th style="width: 22%">Check</th><th>Fails when</th></tr>
+        <tr class="rise" style="--at: .8s"><td class="k">Layout</td><td>Content leaves its page or frame, runs into the footer, or text is too faint to read.</td></tr>
+        <tr class="rise" style="--at: 2s"><td class="k">Fonts</td><td>Text is set in a face that is not vendored, so another machine would render it differently.</td></tr>
+        <tr class="rise" style="--at: 3.2s"><td class="k">Secrets</td><td>A token, key, e-mail address or home path appears in the text.</td></tr>
+        <tr class="rise" style="--at: 4.4s"><td class="k">Words</td><td>The repo's own private words appear, or a relative day word that goes stale.</td></tr>
+        <tr class="rise" style="--at: 5.6s"><td class="k">Rebuild</td><td>The committed file no longer matches a fresh build of its source (CI).</td></tr>
+      </table>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Source: the publishing build and check commands</span><span>3 / 5</span></div>
+  </section>
+
+  <section id="scene-video" class="slide clip" data-start="24" data-duration="7" data-track-index="0">
+    <div class="kicker">The video format</div>
+    <h1>A folder with video.html becomes an MP4</h1>
+    <h2>The same source folder, the same theme, the same pinned render, one more output.</h2>
+    <div class="body middle">
+      <div class="cols c3 steps" style="height: auto">
+        <div class="card rise" style="--at: .6s"><div class="num">1 · WRITE</div><h3>Scenes of HTML</h3>
+          <p>Each scene is a deck slide on the timeline. Motion is CSS animation; nothing loads from the network.</p></div>
+        <div class="card rise" style="--at: 1.6s"><div class="num">2 · RENDER</div><h3>Frame by frame</h3>
+          <p>HyperFrames seeks every frame in the pinned Chromium and ffmpeg encodes them. No clock, no randomness.</p></div>
+        <div class="card rise" style="--at: 2.6s"><div class="num">3 · CHECK</div><h3>The same frames</h3>
+          <p>One toolchain gives the same bytes. Another ffmpeg must stay within a stated tolerance.</p></div>
+      </div>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Source: the publishing video format</span><span>4 / 5</span></div>
+  </section>
+
+  <section id="scene-questions" class="slide clip" data-start="31" data-duration="6" data-track-index="0">
+    <div class="kicker">Questions</div>
+    <h1>A report ends with the decisions it needs</h1>
+    <h2>Each question carries a recommendation and what the answer changes.</h2>
+    <div class="body middle stack">
+      <div class="q rise" style="--at: .5s"><h3><span>1.</span> Adopt the shared tool in the next repo?</h3>
+        <p><b>Recommendation.</b> Yes, starting with the repo that next produces a report.</p>
+        <p><b>What the answer changes.</b> Whether its files gain a rebuild check and the house look.</p></div>
+      <div class="q rise" style="--at: 1.5s"><h3><span>2.</span> Make a video when a picture must move?</h3>
+        <p><b>Recommendation.</b> Yes, for a short walk through a diagram; a deck stays the default.</p>
+        <p><b>What the answer changes.</b> Which format the author starts from.</p></div>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Questions are numbered across the video</span><span>5 / 5</span></div>
+  </section>
+</div>
+</body>
+</html>

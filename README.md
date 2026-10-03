@@ -1,8 +1,9 @@
 # publishing
 
 Shared house-style publishing toolchain: decks, memos and long documents from markdown/Python to PDF,
-with one look, one set of vendored fonts and one pinned Chromium render. Every repo that produces
-reports pins a version of this tool and proves in CI that each committed PDF rebuilds from its source.
+and short videos from HTML to MP4, with one look, one set of vendored fonts and one pinned Chromium
+render. Every repo that produces reports pins a version of this tool and proves in CI that each
+committed PDF and MP4 rebuilds from its source.
 
 The rules for captain-facing reports (what a report is, where copies go, naming, versions, the animus
 exception) live in `~/Documents/AGENTS.md`. This tool implements them; it does not restate them.
@@ -12,17 +13,25 @@ exception) live in `~/Documents/AGENTS.md`. This tool implements them; it does n
 The tool owns its environment through uv; nothing depends on host Python, Node or fonts.
 
 ```sh
-uv tool install git+https://github.com/witt3rd/publishing@v0.1.0   # or run any command through uvx
+uv tool install git+https://github.com/witt3rd/publishing@v0.2.0   # or run any command through uvx
 publishing setup                                                     # the pinned Chromium, into the user cache
+```
+
+For videos, install the `video` extra (it brings the pinned Node) and HyperFrames; ffmpeg comes from
+the host, or use the container image (below):
+
+```sh
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.2.0'
+publishing setup --video                                             # also the pinned HyperFrames
 ```
 
 ## Use
 
 ```sh
-publishing new docs/notes/topic-v1 [--format deck|memo|document]   # scaffold a source folder
-publishing build [SOURCE...] [--png DIR]   # build PDFs beside their sources (default: all under docs/)
-publishing check [PATH...]                 # fail unless every PDF matches a fresh build of its source
-publishing publish docs/notes/topic-v1     # copy the PDF to ~/Documents/<folder>/, never overwriting
+publishing new docs/notes/topic-v1 [--format deck|memo|document|video]   # scaffold a source folder
+publishing build [SOURCE...] [--png DIR]   # build PDFs and MP4s beside their sources (default: all under docs/)
+publishing check [PATH...]                 # fail unless every PDF and MP4 matches a fresh build of its source
+publishing publish docs/notes/topic-v1     # copy the PDF or MP4 to ~/Documents/<folder>/, never overwriting
 publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes.md   # before/after deck
 publishing html PAGE.html -o OUT.pdf [--json]   # a person's HTML to PDF: always user-content mode
 publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
@@ -40,32 +49,100 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
 - **Formats.** `deck`: a folder with `slides.py` defining `TITLE` and `S` (page HTML at 1920×1080; the
   helpers in `publishing.page` give the title page, slides, cards and the numbered question card).
   `memo`: a folder with `memo.md`, portrait. `document`: a folder with `document.md`, long form, with a
-  cover, contents with page numbers, a running header and page numbers. A folder with `source.txt` marks a
-  PDF built elsewhere. Memos and documents are markdown with flat front matter (`title`, `subtitle`,
-  `kicker`, `meta`, `footer`, `paper`), fenced divs (`::: summary`, `::: q`), heading attributes
-  (`{#id .newpage}`), pipe tables with a `: caption` line, figures, footnotes and highlighted code.
-- **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` sits beside it,
-  committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.1.0"`), the `project`, the
-  repo's private scan words, the `[publish]` folder for each kind, and `[[document]]` entries for markdown
-  files with a fixed PDF path (for example a spec rendered to `docs/Spec.pdf`). Its full schema is the
-  docstring of `src/publishing/config.py`. A command run with a different version than the pin re-runs
-  itself through `uvx` at the pinned tag.
+  cover, contents with page numbers, a running header and page numbers. `video`: a folder with
+  `video.html` (see Video). A folder with `source.txt` marks a PDF built elsewhere. Memos and documents
+  are markdown with flat front matter (`title`, `subtitle`, `kicker`, `meta`, `footer`, `paper`), fenced
+  divs (`::: summary`, `::: q`), heading attributes (`{#id .newpage}`), pipe tables with a `: caption`
+  line, figures, footnotes and highlighted code.
+- **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
+  beside it, committed. The folder is the listing: no index files.
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.2.0"`), the `project`, the
+  repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
+  `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
+  `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
+  different version than the pin re-runs itself through `uvx` at the pinned tag.
 - **Every build** fails, and writes nothing, on a layout problem (content leaving its page or running into
   the footer, a table or figure wider than the column), a host font or a glyph outside the vendored fonts,
   a secret, a host detail (home path, e-mail), a stale day word (`[scan] days`), or a private word.
-  A build that would change nothing but the bytes leaves the committed PDF untouched.
-- **Check** compares words and page count, not bytes (Chromium's bytes differ run to run).
+  A build that would change nothing but the bytes leaves the committed file untouched.
+- **Check** compares words and page count for a PDF, not bytes (Chromium's PDF bytes differ run to run);
+  for an MP4 see Video.
 - **CI.** Copy `ci/reports.yml` into `.github/workflows/`.
-- **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright) is a
-  minor bump; a repo adopts it by bumping its pin and running `publishing check`.
+- **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright,
+  HyperFrames) is a minor bump; a repo adopts it by bumping its pin and running `publishing check`.
+
+## Video
+
+A folder `docs/<kind>/<topic>-vN/` with `video.html` builds `<topic>-vN.mp4` beside it. `video.html` is a
+[HyperFrames](https://github.com/heygen-com/hyperframes) composition: a root element with
+`data-composition-id`, `data-width`, `data-height`, `data-fps` and `data-duration` (seconds), holding
+scenes. A scene is a deck slide (`<section class="slide clip">`, or `slide title` for the dark title)
+with `data-start`, `data-duration` and `data-track-index`; the theme (`theme/video.css`, linked by the
+build) gives every deck class its deck look. Motion is CSS animation, which HyperFrames seeks frame by
+frame: the theme's `.rise`, `.fade`, `.grow` and `.pop`, delayed with `style="--at: .5s"` from the scene's
+start, plus `.flow`, `.card` and `.arrow` for a diagram that builds up, and `.body.middle`. Other files in
+the folder (images, CSS) are the composition's. `publishing new --format video` scaffolds one;
+`docs/samples/house-style-video-v1/` is a worked example made from the house deck.
+
+- **Gates.** Before it renders, a build runs the house scan on the composition's text, refuses text set
+  in a face that is not vendored, anything loaded from the network, a missing image, and CSS animation on
+  an SVG shape (HyperFrames seeks HTML elements only, so it would play in real time: animate the HTML that
+  holds it). Then `hyperframes check` gates lint, runtime errors, layout and WCAG AA contrast.
+- **Render.** HyperFrames (exact version in `src/publishing/hyperframes/package-lock.json`) runs on the
+  `video` extra's Node, with the Playwright Chromium headless shell the PDFs use, one worker, software GPU,
+  BeginFrame capture, a private `HOME`, no telemetry and no update check. The MP4 (H.264, no audio) is
+  stamped with the sha256 of its source folder in its `comment` tag.
+- **Determinism.** The same toolchain renders the same bytes (the tests and CI's image job prove it).
+  Another ffmpeg build encodes the same frames differently, so `check` passes when the committed MP4
+  carries the source's stamp (any edit to the folder is caught there), has the same size, rate and frame
+  count, and its frames are identical or at least `[video] tolerance` dB PSNR (default 40) from a fresh
+  render's, at the worst frame. Measured on the sample against the image's render (Debian ffmpeg 5.1):
+  Arch's ffmpeg 9.0 is 48.9 dB, GitHub's Ubuntu 24.04 ffmpeg 6.1 is 43.0 dB; theme changes the tolerance
+  must catch are lower: an h2 1 px larger is 29.0 dB, kicker letter-spacing +0.01 em is 38.7 dB. The
+  image is the reference renderer: build committed MP4s there.
+- **Credits.** HyperFrames is Apache-2.0, by HeyGen and its contributors; it is pinned, not vendored. See
+  `NOTICE`.
+
+## Services
+
+The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
+
+```sh
+docker build -t publishing:0.2.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.2.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.2.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.2.0 \
+  build /in/topic-v1 -o /out/topic-v1.mp4
+```
+
+- **Inputs.** A source folder (or a repo's `docs/`); `report.toml` is optional (defaults apply without
+  one). The image's working directory is `/work`; mount the sources there or anywhere and pass paths.
+- **Outputs.** The built file beside its source folder, or at `-o PATH`. Stdout carries one line per
+  source: `built|current|copy  PATH (12.0 s, 1920x1080, 2.7 MB)` or `(N pages)`; `check` prints
+  `current  PATH` per source and a summary. Problems go to stderr as `publishing: ...` lines.
+- **Exit codes.** `0` done; `1` a source failed its build (lint, scan, render) or `check` found a
+  difference: the author's to fix; `2` usage or configuration (a bad argument, not a source, a bad
+  `report.toml`); `3` the toolchain is missing or broken (or the repo pins another version): the
+  operator's to fix.
+- **Environment.** `PUBLISHING_CACHE` (where `setup --video` installs HyperFrames; the image sets it),
+  `PLAYWRIGHT_BROWSERS_PATH` (the Chromium; the image sets it), `HYPERFRAMES_FFMPEG_PATH` and
+  `HYPERFRAMES_FFPROBE_PATH` (default: the `PATH`), `PUBLISHING_DOCUMENTS` (`publish`'s root, default
+  `~/Documents`). No network is needed at build time.
+- **The image** (`Dockerfile`): Debian bookworm slim by digest, uv, the tool from `uv.lock` with the
+  `video` extra, Chromium and its OS libraries from `publishing setup --with-deps --video`, Debian's
+  ffmpeg, fontconfig; the house fonts are vendored in the package. It runs as any user (`--user`) and
+  writes only to the mounted outputs and `/tmp`. User-content mode (`html`, `--user-content`) runs in the
+  same image under the locked-down flags in [docs/user-content.md](docs/user-content.md) "Containers";
+  a video is never user content (it is refused there). Further converters join it as subcommands of the same
+  CLI, each with its own tests, so a service keeps one image and one entry.
 
 ## Develop
 
 ```sh
-uv sync && uv run publishing setup && uv run pytest -q && uv run publishing check
+uv sync --all-extras && uv run publishing setup --video && uv run pytest -q && uv run publishing check
 tools/usercontent-check.sh   # the user-content tests in a locked-down container (needs Docker)
 ```
 
-The fonts are Noto (SIL OFL 1.1, `src/publishing/theme/fonts/OFL.txt`); `tools/vendor-fonts.py`
-re-vendors them. MIT licence for the code.
+The video tests need ffmpeg on the `PATH`. The fonts are Noto (SIL OFL 1.1,
+`src/publishing/theme/fonts/OFL.txt`); `tools/vendor-fonts.py` re-vendors them. MIT licence for the code;
+third-party credits in `NOTICE`.
