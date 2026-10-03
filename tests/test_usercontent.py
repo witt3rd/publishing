@@ -277,8 +277,9 @@ def test_the_html_command_renders_and_never_overwrites(tmp_path, capsys):
     assert main(["html", str(src), "-o", str(out), "--json"]) == 0
     assert '"pages": 1' in capsys.readouterr().out
     assert "Hello from a person." in pdf.text(out)
-    with pytest.raises(SystemExit, match="exists"):
+    with pytest.raises(SystemExit) as e:
         main(["html", str(src), "-o", str(out)])
+    assert e.value.code == 2  # never overwrite: a usage error
 
 
 def test_a_user_content_build_matches_the_trusted_build(repo, renderer):

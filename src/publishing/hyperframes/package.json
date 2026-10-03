@@ -1,0 +1,10 @@
+{
+  "name": "publishing-hyperframes",
+  "private": true,
+  "description": "The HyperFrames CLI the publishing video format renders with (Apache-2.0, heygen-com/hyperframes). Exact pin; the lockfile pins the rest. Bump both with the release.",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "hyperframes": "0.8.114"
+  }
+}

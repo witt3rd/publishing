@@ -22,8 +22,14 @@ def test_documents_resolve_against_the_root(repo):
     assert d.pdf == (repo / "docs" / "Spire.pdf").resolve() and d.paper == "a4" and d.days is False
 
 
+def test_video_tolerance(repo):
+    assert load(repo).tolerance == 40
+    (repo / "docs" / "report.toml").write_text("[video]\ntolerance = 50\n")
+    assert load(repo).tolerance == 50
+
+
 @pytest.mark.parametrize("body", ['format = "docx"\n', 'paper = "legal"\n', "[[document]]\npdf = 'x.pdf'\n",
-                                  "not toml ="])
+                                  "not toml =", '[video]\ntolerance = "high"\n'])
 def test_bad_config_is_refused(repo, body):
     (repo / "docs" / "report.toml").write_text(body)
     with pytest.raises(ConfigError):

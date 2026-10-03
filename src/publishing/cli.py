@@ -1,4 +1,7 @@
-"""publishing new | build | check | publish | setup | compare | html"""
+"""publishing new | build | check | publish | setup | compare | html
+
+Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
+check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken."""
 import argparse
 import html
 import json
@@ -10,23 +13,33 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, pdf
-from .build import BuildError, build, check, deck_html, discover, resolve
+from . import __version__, pdf, video
+from .build import MARKERS, BuildError, build, check, deck_html, discover, resolve
 from .config import ConfigError, load
 from .publish import PublishError, publish
-from .render import Renderer
+from .render import Renderer, ToolchainError
 from .usercontent import Limits, UserContentError, UserContentRenderer, render_html
 
 REPO = "https://github.com/witt3rd/publishing"
+FORMATS = ("deck", "memo", "document", "video")
+
+
+def usage(msg: str):
+    print(f"publishing: {msg}", file=sys.stderr)
+    sys.exit(2)
 
 
 def _pinned(cfg, argv) -> None:
     """Run the version the repo pins (report.toml `publishing`), re-executing through uvx if needed."""
     if not cfg.pin or cfg.pin == __version__:
         return
-    cmd = ["uvx", "--from", f"git+{REPO}@v{cfg.pin}", "publishing", *argv]
+    docs = cfg.root / "docs"
+    videos = cfg.path is not None and docs.is_dir() and any(docs.rglob("video.html"))
+    spec = f"publishing[video] @ git+{REPO}@v{cfg.pin}" if videos else f"git+{REPO}@v{cfg.pin}"
+    cmd = ["uvx", "--from", spec, "publishing", *argv]
     if os.environ.get("PUBLISHING_PINNED") or not shutil.which("uvx"):
-        sys.exit(f"publishing: {cfg.path} pins {cfg.pin}, this is {__version__}. Run: {' '.join(cmd)}")
+        print(f"publishing: {cfg.path} pins {cfg.pin}, this is {__version__}. Run: {' '.join(cmd)}", file=sys.stderr)
+        sys.exit(3)
     print(f"publishing: {cfg.path.name} pins {cfg.pin}; running it through uvx", file=sys.stderr)
     os.execvpe("uvx", cmd, {**os.environ, "PUBLISHING_PINNED": "1"})
 
@@ -34,7 +47,7 @@ def _pinned(cfg, argv) -> None:
 def cmd_new(a) -> int:
     folder = Path(a.folder)
     if folder.exists():
-        sys.exit(f"publishing: {folder} exists; never overwrite (bump the version)")
+        usage(f"{folder} exists; never overwrite (bump the version)")
     cfg = load(folder.parent if folder.parent.exists() else Path.cwd())
     tpl = resources.files("publishing").joinpath("templates", a.format)
     folder.mkdir(parents=True)
@@ -66,14 +79,14 @@ def _renderer(a, cfg):
 
 def cmd_build(a) -> int:
     if a.output and len(a.targets) != 1:
-        sys.exit("publishing: --output takes exactly one source")
+        usage("--output takes exactly one source")
     cfg = load(Path(a.targets[0]) if a.targets else Path.cwd())
     if cfg.path is None and a.output:  # a source outside the repo (a staged copy): the output's repo config
         cfg = load(Path(a.output).resolve().parent)
     _pinned(cfg, sys.argv[1:])
     sources, _ = _sources(a, cfg)
     if not sources:
-        sys.exit("publishing: nothing to build (no source folders under docs/)")
+        usage("nothing to build (no source folders under docs/)")
     failed = 0
     with _renderer(a, cfg) as r:
         for s in sources:
@@ -83,7 +96,7 @@ def cmd_build(a) -> int:
                 print(f"publishing: {e}", file=sys.stderr)
                 failed += 1
                 continue
-            print(f"{state:8} {_rel(s.pdf)} ({pdf.pages(s.pdf)} pages)", flush=True)
+            print(f"{state:8} {_rel(s.pdf)} ({_size(s.pdf)})", flush=True)
     return 1 if failed else 0
 
 
@@ -94,7 +107,7 @@ def cmd_check(a) -> int:
     sources, orphans = [], []
     for t in targets or [None]:
         p = Path(t) if t else (cfg.root / "docs" if (cfg.root / "docs").is_dir() else cfg.root)
-        if p.is_dir() and not any((p / m).is_file() for m in ("slides.py", "memo.md", "document.md", "source.txt")):
+        if p.is_dir() and not any((p / m).is_file() for m in MARKERS):
             s, o = discover(p, cfg)
             sources += s
             orphans += o
@@ -124,8 +137,8 @@ def cmd_publish(a) -> int:
         state, target = publish(s, cfg, name=a.name)
     except (PublishError, BuildError) as e:
         sys.exit(f"publishing: {e}")
-    pages = f" ({pdf.pages(target)} pages)" if target.suffix == ".pdf" else ""
-    print(f"{state}: {target}{pages}")
+    size = f" ({_size(target)})" if target.suffix in (".pdf", ".mp4") else ""
+    print(f"{state}: {target}{size}")
     return 0
 
 
@@ -133,7 +146,10 @@ def cmd_setup(a) -> int:
     cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
     if a.with_deps:
         cmd.insert(4, "--with-deps")
-    return subprocess.call(cmd)
+    code = subprocess.call(cmd)
+    if code or not a.video:
+        return code
+    return video.setup()
 
 
 def cmd_compare(a) -> int:
@@ -142,12 +158,12 @@ def cmd_compare(a) -> int:
 
     old, new, out = Path(a.old).resolve(), Path(a.new).resolve(), Path(a.output)
     if out.exists():
-        sys.exit(f"publishing: {out} exists; never overwrite (bump the version)")
+        usage(f"{out} exists; never overwrite (bump the version)")
     try:
         pairs = [(int(p.split(":")[0]), int(p.split(":")[1]), p.split(":", 2)[2] if p.count(":") >= 2 else "")
                  for p in a.pair] or [(i, i, "") for i in range(1, min(pdf.pages(old), pdf.pages(new), 6) + 1)]
     except (ValueError, IndexError):
-        sys.exit("publishing: --pair is OLD:NEW or OLD:NEW:caption (page numbers from 1)")
+        usage("--pair is OLD:NEW or OLD:NEW:caption (page numbers from 1)")
     notes = Path(a.notes).read_text().splitlines() if a.notes else []
     points = [n[2:].strip() for n in notes if n.startswith(("- ", "* "))]
     cfg = load(Path.cwd())
@@ -161,7 +177,7 @@ def cmd_compare(a) -> int:
                 f"{lab_old}: {n_old} pages · {lab_new}: {n_new} pages")
         for po, pn, cap in pairs:
             if not (1 <= po <= n_old and 1 <= pn <= n_new):
-                sys.exit(f"publishing: pair {po}:{pn} is out of range ({n_old} and {n_new} pages)")
+                usage(f"pair {po}:{pn} is out of range ({n_old} and {n_new} pages)")
             body = (f'<div class="pair"><figure><figcaption><b>{lab_old}</b> · page {po} of {n_old}</figcaption>'
                     f'<img src="{imgs["old"][po - 1].relative_to(tmp)}"></figure>'
                     f'<figure><figcaption><b>{lab_new}</b> · page {pn} of {n_new}</figcaption>'
@@ -187,10 +203,10 @@ def cmd_html(a) -> int:
     """A person's HTML file to PDF, always in user-content mode: the entry for services."""
     out = Path(a.output)
     if out.exists():
-        sys.exit(f"publishing: {out} exists; never overwrite")
+        usage(f"{out} exists; never overwrite")
     for name in ("max_bytes", "max_pages", "timeout", "max_memory"):
         if getattr(a, name) is not None and getattr(a, name) <= 0:
-            sys.exit(f"publishing: --{name.replace('_', '-')} must be positive")
+            usage(f"--{name.replace('_', '-')} must be positive")
     d = Limits()
     limits = Limits(max_bytes=a.max_bytes or d.max_bytes, max_pages=a.max_pages or d.max_pages,
                     timeout=a.timeout or d.timeout, max_memory_mb=a.max_memory or d.max_memory_mb,
@@ -208,6 +224,10 @@ def cmd_html(a) -> int:
     return 0
 
 
+def _size(p: Path) -> str:
+    return video.describe(p) if p.suffix == ".mp4" else f"{pdf.pages(p)} pages"
+
+
 def _rel(p: Path) -> str:
     try:
         return str(p.resolve().relative_to(Path.cwd()))
@@ -216,25 +236,25 @@ def _rel(p: Path) -> str:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="publishing", description="House-style decks, memos and documents to PDF. "
-                                 "Report rules: ~/Documents/AGENTS.md.")
+    ap = argparse.ArgumentParser(prog="publishing", description="House-style decks, memos and documents to PDF, "
+                                 "and videos to MP4. Report rules: ~/Documents/AGENTS.md.")
     ap.add_argument("--version", action="version", version=f"publishing {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("new", help="scaffold docs/<kind>/<topic>-v1/")
     p.add_argument("folder")
-    p.add_argument("--format", choices=("deck", "memo", "document"), default="deck")
+    p.add_argument("--format", choices=FORMATS, default="deck")
     p.set_defaults(fn=cmd_new)
 
-    for name, fn, hlp in (("build", cmd_build, "build PDFs beside their sources"),
-                          ("check", cmd_check, "fail unless every PDF matches a fresh build of its source")):
+    for name, fn, hlp in (("build", cmd_build, "build PDFs (and MP4s) beside their sources"),
+                          ("check", cmd_check, "fail unless every PDF and MP4 matches a fresh build of its source")):
         p = sub.add_parser(name, help=hlp)
-        p.add_argument("targets", nargs="*", help="source folders, markdown files or PDFs (default: docs/)")
+        p.add_argument("targets", nargs="*", help="source folders, markdown files, PDFs or MP4s (default: docs/)")
         if name == "build":
-            p.add_argument("-o", "--output", help="the PDF path (one source only)")
-            p.add_argument("--format", choices=("deck", "memo", "document"), help="override the format")
-            p.add_argument("--force", action="store_true", help="rewrite even when the PDF is current")
-            p.add_argument("--png", metavar="DIR", help="also write one PNG per page under DIR/<name>/")
+            p.add_argument("-o", "--output", help="the PDF or MP4 path (one source only)")
+            p.add_argument("--format", choices=FORMATS, help="override the format")
+            p.add_argument("--force", action="store_true", help="rewrite even when the output is current")
+            p.add_argument("--png", metavar="DIR", help="also write one PNG per page (video: per second) under DIR/<name>/")
         else:
             p.set_defaults(format=None, output=None)
         p.add_argument("--user-content", action="store_true",
@@ -246,8 +266,9 @@ def main(argv=None) -> int:
     p.add_argument("--name", help="published name without extension (kebab-case, -vN)")
     p.set_defaults(fn=cmd_publish)
 
-    p = sub.add_parser("setup", help="install the pinned Chromium into the user cache")
+    p = sub.add_parser("setup", help="install the pinned Chromium (and HyperFrames) into the user cache")
     p.add_argument("--with-deps", action="store_true", help="also the OS libraries (CI; needs sudo)")
+    p.add_argument("--video", action="store_true", help="also the pinned HyperFrames, for videos (the video extra)")
     p.set_defaults(fn=cmd_setup)
 
     p = sub.add_parser("compare", help="a deck of two PDFs' pages side by side (before/after)")
@@ -280,8 +301,13 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
     try:
         return a.fn(a)
-    except (ConfigError, BuildError) as e:
-        sys.exit(f"publishing: {e}")
+    except ConfigError as e:
+        usage(str(e))
+    except BuildError as e:  # a target that is not a source: a usage error, not a failed build
+        usage(str(e))
+    except ToolchainError as e:
+        print(f"publishing: {e}", file=sys.stderr)
+        sys.exit(3)
 
 
 if __name__ == "__main__":

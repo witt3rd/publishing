@@ -1,0 +1,25 @@
+publishing
+Copyright (c) the publishing authors. MIT licence (LICENSE).
+
+This tool uses, without vendoring, the following third-party software. Each is installed at a
+pinned version when the tool is set up, and keeps its own licence and notices.
+
+HyperFrames (the video format's renderer)
+  https://github.com/heygen-com/hyperframes, npm package "hyperframes", pinned in
+  src/publishing/hyperframes/package.json and package-lock.json.
+  By HeyGen (heygen-com) and the HyperFrames contributors. Licensed under the Apache License,
+  Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+  Its own credits (CREDITS.md in that repository) acknowledge Remotion as prior art and the
+  open-source projects it builds on, including Puppeteer, FFmpeg, GSAP and Hono. The publishing
+  video format does not load GSAP: its motion is CSS animation.
+
+Node.js (runs HyperFrames), via the PyPI package nodejs-wheel-binaries, pinned in uv.lock.
+  https://nodejs.org, MIT licence and the third-party licences it ships.
+
+Playwright and Chromium (the PDF and video renderer), pinned in uv.lock.
+  https://playwright.dev, Apache License 2.0; Chromium, BSD-style licence and its third-party notices.
+
+FFmpeg (video encoding), from the host or the container's Debian package; LGPL/GPL per build.
+  https://ffmpeg.org
+
+Noto fonts (vendored in src/publishing/theme/fonts/), SIL Open Font License 1.1 (OFL.txt there).

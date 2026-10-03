@@ -1,7 +1,7 @@
 [project]
 name = "publishing"
-version = "0.1.0"
-description = "House-style publishing toolchain: decks, memos and long documents to PDF"
+version = "0.2.0"
+description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -15,6 +15,11 @@ dependencies = [
   "pypdfium2==5.13.0",
   "pillow==12.3.0",
 ]
+
+[project.optional-dependencies]
+# The video format: HyperFrames runs on this Node (>=22); its own version is pinned in
+# src/publishing/video/package-lock.json and installed by `publishing setup --video`.
+video = ["nodejs-wheel-binaries==24.19.0"]
 
 [project.scripts]
 publishing = "publishing.cli:main"
