@@ -19,9 +19,11 @@ from publishing import pdf
 from publishing.build import BuildError, build, resolve
 from publishing.cli import main
 from publishing.config import load
-from publishing.usercontent import Limits, UserContentError, UserContentRenderer, child_env, render_html, sandboxed
+from publishing.usercontent import (Limits, UserContentError, UserContentRenderer, child_env, netns_available,
+                                    render_html, sandboxed)
 
 MARKER = "EXFILTRATED-MARKER"
+NO_USERNS = ["bwrap", "--dev-bind", "/", "/", "--unshare-user", "--disable-userns"]  # no user namespace inside
 
 
 @pytest.fixture
@@ -260,15 +262,47 @@ def test_the_render_runs_without_a_network_where_namespaces_allow(tmp_path):
 
 
 @pytest.mark.skipif(not shutil.which("bwrap"), reason="no bwrap to take user namespaces away")
-def test_no_sandbox_means_no_render(tmp_path):
-    """Where Chromium cannot sandbox itself the render fails; it never falls back to no sandbox."""
+def test_no_sandbox_means_no_render(tmp_path, no_core_dump):
+    """Where Chromium cannot sandbox itself the render fails before Chromium launches (Chromium's own
+    refusal dumps core); it never falls back to no sandbox."""
     src = page(tmp_path / "doc", "<p>Text.</p>")
     out = tmp_path / "out.pdf"
-    p = subprocess.run(["bwrap", "--dev-bind", "/", "/", "--unshare-user", "--disable-userns",
-                        sys.executable, "-m", "publishing.cli", "html", str(src), "-o", str(out)],
-                       capture_output=True, text=True, timeout=120)
-    assert p.returncode != 0 and "sandbox" in p.stderr.lower()
+    p = subprocess.run(NO_USERNS + [sys.executable, "-m", "publishing.cli", "html", str(src), "-o", str(out)],
+                       capture_output=True, text=True, timeout=120, preexec_fn=no_core_dump)
+    assert p.returncode != 0 and "could not start its sandbox" in p.stderr, p.stderr
+    assert "did not launch it" in p.stderr, p.stderr  # refused by the probe, not by a Chromium crash
     assert not out.exists()
+
+
+@pytest.mark.skipif(not shutil.which("bwrap"), reason="no bwrap to take user namespaces away")
+def test_the_sandbox_probe_sees_what_chromium_needs(no_core_dump):
+    probe = [sys.executable, "-c", "from publishing.usercontent import sandbox_problem; print(sandbox_problem())"]
+    here = subprocess.run(probe, capture_output=True, text=True, timeout=30, check=False)
+    taken = subprocess.run(NO_USERNS + probe, capture_output=True, text=True, timeout=30, check=False,
+                           preexec_fn=no_core_dump)
+    assert taken.returncode == 0 and "namespace" in taken.stdout, taken.stdout + taken.stderr
+    if netns_available():  # a host that lets Chromium sandbox itself
+        assert here.stdout.strip() == "None", here.stdout + here.stderr
+
+
+def test_an_unconfined_process_under_the_apparmor_restriction_leaves_it_to_chromium(tmp_path, monkeypatch):
+    from publishing import usercontent
+
+    flag = tmp_path / "restrict"
+    monkeypatch.setattr(usercontent, "APPARMOR_USERNS", flag)
+    monkeypatch.setattr(usercontent, "_userns_probe", lambda: "no user, pid and network namespaces")
+    assert usercontent.sandbox_problem() == "no user, pid and network namespaces"  # no AppArmor
+    flag.write_text("0\n")
+    assert usercontent.sandbox_problem() == "no user, pid and network namespaces"  # not restricted
+    flag.write_text("1\n")
+    label = tmp_path / "label"
+    monkeypatch.setattr(usercontent, "APPARMOR_LABEL", (tmp_path / "absent", label))
+    label.write_text("unconfined\n")
+    assert usercontent.sandbox_problem() is None  # a profile on the Chromium binary may grant them
+    label.write_text("docker-default (enforce)\n")
+    assert usercontent.sandbox_problem() == "no user, pid and network namespaces"  # Chromium inherits it
+    monkeypatch.setattr(usercontent.os, "geteuid", lambda: 0)
+    assert "root" in usercontent.sandbox_problem()
 
 
 def test_the_html_command_renders_and_never_overwrites(tmp_path, capsys):

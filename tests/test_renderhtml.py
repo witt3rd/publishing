@@ -336,12 +336,12 @@ def test_the_function_raises_with_the_commands_exit_codes(tmp_path):
 
 
 @pytest.mark.skipif(not shutil.which("bwrap"), reason="no bwrap to take user namespaces away")
-def test_no_sandbox_means_no_render_and_exit_3(tmp_path):
+def test_no_sandbox_means_no_render_and_exit_3(tmp_path, no_core_dump):
     src = page(tmp_path / "doc", "<p>Text.</p>")
     p = subprocess.run(["bwrap", "--dev-bind", "/", "/", "--unshare-user", "--disable-userns",
                         sys.executable, "-m", "publishing.cli", "render-html", str(src), "--png", str(tmp_path / "i")],
-                       capture_output=True, text=True, timeout=120)
-    assert p.returncode == 3 and "sandbox" in p.stderr.lower(), p.stderr
+                       capture_output=True, text=True, timeout=120, preexec_fn=no_core_dump)
+    assert p.returncode == 3 and "did not launch it" in p.stderr, p.stderr  # refused before Chromium starts
     assert nothing_written(tmp_path / "i") and not src.with_suffix(".pdf").exists()
 
 

@@ -9,7 +9,8 @@ upload, which could pull `/etc/passwd` or an internal address into the PDF. This
 - puts that tree in a fresh network namespace with no interfaces where the host allows
   unprivileged user namespaces (`unshare --user --net`), so nothing in it can reach a network;
 - launches Chromium with its own sandbox ON and refuses to render if the renderers are not
-  sandboxed (it never falls back to no sandbox);
+  sandboxed (it never falls back to no sandbox); where that sandbox cannot start it refuses before
+  launching Chromium, whose own refusal is a fatal check that dumps core (`sandbox_problem`);
 - never loads a `file://` URL: the page is served from the virtual origin http://publishing.invalid,
   `/doc/` maps to the document's own folder and `/_theme/` to the house theme; every other request
   (any host, any other path, a hidden file, a symlink out of the folder) is refused, a navigation
@@ -20,6 +21,7 @@ upload, which could pull `/etc/passwd` or an internal address into the PDF. This
 
 Container requirements and residual risks: docs/user-content.md.
 """
+import ctypes
 import json
 import mimetypes
 import os
@@ -46,6 +48,11 @@ CHROMIUM_ARGS = [
 ENV_KEEP = ("PATH", "HOME", "LANG", "LANGUAGE", "TZ", "TMPDIR", "PLAYWRIGHT_BROWSERS_PATH", "XDG_CACHE_HOME",
             "FONTCONFIG_FILE", "FONTCONFIG_PATH")
 STDERR_CHARS = 400
+NO_SANDBOX = ("Chromium could not start its sandbox here (user namespaces are blocked?); user-content mode "
+              "never renders without it. Container requirements: docs/user-content.md")
+CLONE_NEWUSER, CLONE_NEWPID, CLONE_NEWNET = 0x10000000, 0x20000000, 0x40000000
+APPARMOR_USERNS = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+APPARMOR_LABEL = (Path("/proc/self/attr/apparmor/current"), Path("/proc/self/attr/current"))  # newest first
 
 
 class UserContentError(Exception):
@@ -188,6 +195,10 @@ def _render(document: Path, root: Path, doc_path: str, *, kind: str, paper: str,
             raise UserContentError(f"{document.name}: {why}")
         if reply.get("limit"):
             raise UserContentError(f"{document.name}: {reply['error']}")
+        if reply.get("no_sandbox"):
+            raise UserContentError(f"Chromium could not start its sandbox here ({reply['no_sandbox']}), so "
+                                   "user-content mode did not launch it: it never renders without the sandbox. "
+                                   "Container requirements: docs/user-content.md")
         if code != 0 or "error" in reply:
             raise UserContentError(_failure(reply.get("error"), reply.get("detail", "") + stderr, code))
         data = (tmp / "out.pdf").read_bytes()
@@ -204,8 +215,7 @@ def _render(document: Path, root: Path, doc_path: str, *, kind: str, paper: str,
 def _failure(error: str | None, detail: str, code: int) -> str:
     text = f"{error or ''}\n{detail}"
     if re.search(r"sandbox(ing)? failed|No usable sandbox|not sandboxed", text, re.I):
-        return ("Chromium could not start its sandbox here (user namespaces are blocked?); user-content mode "
-                "never renders without it. Container requirements: docs/user-content.md")
+        return NO_SANDBOX
     if re.search(r"crash", text, re.I):
         return "the page crashed the renderer"
     tail = (error or detail.strip() or f"exit status {code}")[-STDERR_CHARS:]
@@ -284,6 +294,69 @@ def _kill(proc):
 
 
 # ---------------------------------------------------------------- the sandbox check
+
+def _userns_probe() -> str | None:
+    """Do what Chromium's namespace sandbox needs, in a throwaway child: a new user namespace with new
+    pid and network namespaces, this uid and gid mapped into it, and one more user namespace inside
+    (Chromium's own probe, sandbox/linux/services/credentials.cc). None when that works, else why not."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    uid, gid = os.getuid(), os.getgid()
+    r, w = os.pipe()
+    pid = os.fork()
+    if pid == 0:  # the child only makes syscalls and writes its answer: no Python cleanup runs
+        why = b""
+        try:
+            os.close(r)
+            if libc.unshare(CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNET):
+                why = f"no user, pid and network namespaces: {os.strerror(ctypes.get_errno())}".encode()
+            else:
+                maps = (("setgroups", "deny"), ("uid_map", f"{uid} {uid} 1"), ("gid_map", f"{gid} {gid} 1"))
+                for name, text in maps:
+                    with open(f"/proc/self/{name}", "w") as f:
+                        f.write(text)
+                if libc.unshare(CLONE_NEWUSER):
+                    why = f"no nested user namespace: {os.strerror(ctypes.get_errno())}".encode()
+        except BaseException as e:  # noqa: BLE001 - any failure is the answer
+            why = f"cannot map this user into a user namespace: {e}".encode()
+        finally:
+            os.write(w, why or b"ok")
+            os._exit(0)
+    os.close(w)
+    with os.fdopen(r, "rb") as f:
+        answer = f.read().decode(errors="replace")
+    os.waitpid(pid, 0)
+    return None if answer == "ok" else answer or "the namespace probe died"
+
+
+def sandbox_problem() -> str | None:
+    """Why Chromium's sandbox cannot start in this process, or None. Checked before Chromium launches:
+    where its sandbox cannot start Chromium stops on a fatal check (SIGTRAP), so every refused render
+    would be a core dump and a desktop crash notice. This never loosens the sandbox; it only moves the
+    refusal ahead of the launch. Under Ubuntu's AppArmor userns restriction an AppArmor profile may grant
+    user namespaces to the Chromium binary alone, which this process cannot see, so there Chromium
+    decides (docs/user-content.md, "Hosts")."""
+    if os.geteuid() == 0:
+        return "running as root, where Chromium will not start its sandbox"
+    why = _userns_probe()
+    return None if why and _apparmor_may_grant_chromium() else why
+
+
+def _apparmor_may_grant_chromium() -> bool:
+    """True when AppArmor restricts user namespaces for unconfined processes and this one is unconfined:
+    a profile attached to the Chromium binary on exec may still grant them. A confined process (a
+    container's docker-default) passes its profile to Chromium, so there the probe speaks for it."""
+    try:
+        if APPARMOR_USERNS.read_text().strip() != "1":
+            return False
+    except OSError:
+        return False
+    for attr in APPARMOR_LABEL:
+        try:
+            return attr.read_text().strip().split(" ")[0] == "unconfined"
+        except OSError:
+            continue
+    return False
+
 
 def _ns(pid, kind: str) -> str | None:
     try:
@@ -414,6 +487,10 @@ def _child(job_path: str) -> int:
             w, h = PAPER_MM[job["paper"]]
             viewport = {"width": round((w - 2 * MARGIN_MM) * MM), "height": round(h * MM)}
         ms = (lim.timeout + 5) * 1000  # the parent's hard limit always decides first
+        why = sandbox_problem()
+        if why:  # refuse here: Chromium's own refusal would dump core
+            reply_path.write_text(json.dumps({"error": why, "no_sandbox": why}))
+            return 1
         with sync_playwright() as pw:
             browser = pw.chromium.launch(chromium_sandbox=True, args=CHROMIUM_ARGS, timeout=ms)
             ctx = browser.new_context(java_script_enabled=lim.allow_js, service_workers="block",
