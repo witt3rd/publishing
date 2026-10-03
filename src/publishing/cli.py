@@ -56,6 +56,8 @@ def cmd_build(a) -> int:
     if a.output and len(a.targets) != 1:
         sys.exit("publishing: --output takes exactly one source")
     cfg = load(Path(a.targets[0]) if a.targets else Path.cwd())
+    if cfg.path is None and a.output:  # a source outside the repo (a staged copy): the output's repo config
+        cfg = load(Path(a.output).resolve().parent)
     _pinned(cfg, sys.argv[1:])
     sources, _ = _sources(a, cfg)
     if not sources:

@@ -62,9 +62,10 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
         else:
             raise BuildError(f"{target}: no slides.py, memo.md, document.md or source.txt")
     elif target.suffix == ".md":
-        entry = cfg.document_for(target)
-        if entry:
+        entry = cfg.document_for(target) or (cfg.documents_pdf(out) if out else None)
+        if entry:  # a listed document, or a copy of one (a pre-commit hook renders the staged file)
             s = _from_entry(entry, cfg)
+            s.src = target
         else:
             meta, _ = markdown.front_matter(target.read_text())
             s = Source(fmt or meta.get("format", "memo"), target, target.with_suffix(".pdf"),
@@ -141,7 +142,7 @@ def deck_html(pages: list[str], base: Path, title: str) -> str:
 
 
 def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None) -> str:
-    md_path = s.src if s.src.is_file() else s.src / f"{s.kind}.md"
+    md_path = s.src if s.src.suffix == ".md" else s.src / f"{s.kind}.md"
     page = markdown.parse(md_path.read_text())
     meta = page.meta
     kicker = htmlmod.escape(meta.get("kicker", cfg.project or ""))
@@ -189,7 +190,7 @@ def _inline_svgs(body: str, base: Path) -> str:
 
 
 def _furniture(s: Source, cfg: Config) -> list[str]:
-    meta = markdown.front_matter((s.src if s.src.is_file() else s.src / f"{s.kind}.md").read_text())[0]
+    meta = markdown.front_matter((s.src if s.src.suffix == ".md" else s.src / f"{s.kind}.md").read_text())[0]
     return [meta.get("kicker", cfg.project or ""), meta.get("footer", meta.get("date", ""))]
 
 
@@ -204,6 +205,8 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
     """Render `s` to `out` (a scratch path); return every problem (lint, scan). Empty is clean."""
     if cfg.format == "markdown":
         raise BuildError(f"{cfg.path}: format = \"markdown\": reports here are the markdown itself, not PDFs")
+    if not s.src.exists():
+        raise BuildError(f"{s.name}: its source {s.src} is missing")
     work = out.parent / f".{out.stem}.html"
     if s.kind == "deck":
         work.write_text(_deck_html(s))

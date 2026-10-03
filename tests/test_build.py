@@ -137,3 +137,16 @@ def test_named_families_use_vendored_faces_and_generic_ones_fail(repo, renderer,
     else:
         with pytest.raises(BuildError, match="host font used"):
             build(s, cfg, renderer)
+
+
+def test_a_staged_copy_builds_with_the_documents_settings(repo, tmp_path):
+    """The pre-commit hook renders the staged spire.md from a temp dir to the repo's docs/Spire.pdf."""
+    (repo / "docs" / "report.toml").write_text(
+        '[[document]]\nsource = "docs/spire.md"\npdf = "docs/Spire.pdf"\npaper = "a4"\ndays = false\n')
+    staged = tmp_path / "staged" / "spire.md"
+    staged.parent.mkdir()
+    staged.write_text("# Spire\n\n## Rules\n\nWe hold these today.\n")
+    assert main(["build", str(staged), "-o", str(repo / "docs" / "Spire.pdf")]) == 0
+    assert main(["check", str(repo / "docs" / "Spire.pdf")]) == 1  # docs/spire.md itself is missing
+    (repo / "docs" / "spire.md").write_text(staged.read_text())
+    assert main(["check", str(repo / "docs" / "Spire.pdf")]) == 0
