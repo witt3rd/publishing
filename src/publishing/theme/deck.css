@@ -1,0 +1,83 @@
+/* Deck: 1920x1080 slides (the explainer design: paper, ink, one accent), with the question card .q. */
+@import url("house.css");
+@page { size: 1920px 1080px; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #888; }
+body { font-family: var(--sans); color: var(--ink); }
+.slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; background: var(--paper);
+  page-break-after: always; break-after: page; padding: 64px 120px 96px 120px;
+  display: flex; flex-direction: column; }
+.kicker { font-size: 20px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { font-size: 48px; line-height: 1.1; margin: 10px 0 0 0; font-weight: 700; letter-spacing: -0.01em; max-width: 1680px; }
+h2 { font-size: 26px; line-height: 1.3; margin: 12px 0 0 0; font-weight: 400; color: var(--ink2); max-width: 1640px; }
+.body { position: relative; flex: 1; margin-top: 30px; min-height: 0; }
+.foot { position: absolute; left: 120px; right: 120px; bottom: 30px; height: 30px; display: flex;
+  justify-content: space-between; align-items: flex-end; font-size: 17px; color: var(--muted); }
+.foot b { color: var(--ink2); font-weight: 600; }
+.rule { position: absolute; left: 120px; right: 120px; bottom: 70px; border-top: 1px solid var(--line); }
+.title { background: var(--ink); color: #fff; padding: 150px 160px; }
+.title h1 { font-size: 84px; color: #fff; max-width: 1500px; }
+.title h2 { color: #c9cbe0; font-size: 34px; max-width: 1450px; margin-top: 26px; }
+.title .kicker { color: #b3a9ff; }
+.title .foot { color: #8f93ad; left: 160px; right: 160px; }
+.title .rule { border-color: #3a4256; left: 160px; right: 160px; }
+.title ol { margin: 50px 0 0 0; padding-left: 36px; font-size: 27px; line-height: 1.45; color: #e6e7f0; max-width: 1560px; }
+.title ol li { margin-bottom: 12px; }
+.title ol b { color: #fff; }
+.cols { display: grid; gap: 36px; height: 100%; }
+.c2 { grid-template-columns: 1fr 1fr; } .c3 { grid-template-columns: 1fr 1fr 1fr; } .c4 { grid-template-columns: repeat(4, 1fr); }
+.c2a { grid-template-columns: 1.35fr 1fr; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 26px; }
+.card h3 { margin: 0 0 8px 0; font-size: 23px; }
+.card p, .card li { font-size: 19.5px; line-height: 1.45; color: var(--ink2); margin: 0; }
+.card ul { margin: 6px 0 0 0; padding-left: 22px; }
+.tag { display: inline-block; font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 10px; border-radius: 999px; margin-right: 6px; }
+.own { background: #fbe9e8; color: var(--red); } .mit { background: #e3f4ec; color: var(--hit); }
+.svc { background: #fdf1de; color: #a26a0f; } .acc { background: var(--accent-soft); color: var(--accent); }
+table { border-collapse: collapse; width: 100%; font-size: 19px; line-height: 1.38; background: var(--card); }
+th { text-align: left; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2);
+  border-bottom: 2px solid var(--ink); padding: 10px 14px; background: var(--paper); }
+td { border-bottom: 1px solid var(--line); padding: 10px 14px; vertical-align: top; color: var(--ink); }
+td.k { font-weight: 700; width: 18%; }
+.good { color: var(--hit); font-weight: 700; } .bad { color: var(--red); font-weight: 700; } .mid { color: #a26a0f; font-weight: 700; }
+.shot { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; }
+.shot img { width: 100%; height: auto; display: block; border-radius: 6px; border: 1px solid #eee; }
+.shot .cap { font-size: 16px; color: var(--ink2); margin-top: 8px; }
+.shot .cap b { color: var(--ink); }
+.credit { font-size: 15px; color: var(--red); font-weight: 700; letter-spacing: .04em; }
+.big { font-size: 64px; font-weight: 800; color: var(--accent); line-height: 1; }
+.bigl { font-size: 18px; color: var(--ink2); margin-top: 6px; }
+.lead { font-size: 24px; line-height: 1.45; color: var(--ink); margin: 0 0 18px 0; }
+.note { font-size: 18px; color: var(--ink2); line-height: 1.45; }
+.quote { border-left: 5px solid var(--accent); padding: 6px 0 6px 20px; font-size: 21px; line-height: 1.45; color: var(--ink); background: transparent; }
+.diagram svg { width: 100%; height: auto; display: block; }
+.stack > * + * { margin-top: 18px; }
+
+table.dense { font-size: 17.5px; line-height: 1.32; } table.dense td { padding: 8px 12px; }
+
+/* choir-coordination: a denser page for the wide topology table, and a shorter title page. */
+.slide.tight { padding: 50px 80px 96px 80px; }
+.slide.tight h1 { font-size: 42px; }
+.slide.tight h2 { font-size: 23px; max-width: 1760px; }
+.slide.tight .body { margin-top: 14px; }
+.slide.tight .foot, .slide.tight .rule { left: 80px; right: 80px; }
+.title.short { padding: 110px 160px; }
+.title.short h1 { font-size: 70px; }
+.title.short h2 { font-size: 29px; }
+.title.short ol { font-size: 25px; margin-top: 36px; }
+.topo td.k { width: auto; }
+
+/* The captain-question card: numbered question, recommendation, what the answer changes. */
+.q { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 20px; }
+.q h3 { margin: 0 0 6px 0; font-size: 23px; } .q h3 span { color: var(--accent); }
+.q p { margin: 5px 0 0 0; font-size: 20px; line-height: 1.38; color: var(--ink2); }
+.q p b { color: var(--ink); }
+code { font-family: var(--mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+/* compare: two pages side by side */
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; height: 100%; }
+.pair figure { margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; }
+.pair img { max-height: 100%; max-width: 100%; min-height: 0; object-fit: contain; border: 1px solid var(--line);
+  box-shadow: 0 2px 10px rgba(29, 36, 51, .12); background: #fff; }
+.pair figcaption { font-size: 18px; color: var(--ink2); margin-bottom: 10px; }
+.pair figcaption b { color: var(--ink); }

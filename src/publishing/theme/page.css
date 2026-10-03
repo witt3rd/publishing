@@ -1,0 +1,134 @@
+/* Memo and document: portrait pages from markdown. Same paper, ink and accent as the deck;
+   serif reading text, sans headings, tables and page furniture. The build adds @page size and
+   the running header/footer strings. */
+@import url("house.css");
+
+@page {
+  margin: 22mm 20mm 20mm 20mm;
+  @top-left { font: 400 7.5pt/1 var(--sans); color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    vertical-align: bottom; padding-bottom: 5mm; }
+  @top-right { font: 400 7.5pt/1 var(--sans); color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    vertical-align: bottom; padding-bottom: 5mm; }
+  @bottom-left { font: 400 7.5pt/1 var(--sans); color: var(--muted); vertical-align: top; padding-top: 6mm; }
+  @bottom-right { font: 600 7.5pt/1 var(--sans); color: var(--ink2); vertical-align: top; padding-top: 6mm;
+    content: counter(page) " / " counter(pages); }
+}
+
+* { box-sizing: border-box; }
+html { font-size: 10.5pt; }
+body { margin: 0; font: 400 1rem/1.52 var(--serif); color: var(--ink); background: #fff;
+  font-kerning: normal; font-variant-ligatures: common-ligatures; text-rendering: optimizeLegibility;
+  orphans: 3; widows: 3; }
+
+/* Title block (memo: top of page 1; document: the cover). */
+.titleblock { border-bottom: 1.5pt solid var(--ink); padding-bottom: 12pt; margin-bottom: 18pt; }
+.kicker { font: 700 8pt/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0; }
+.titleblock h1, h1.title { font: 700 24pt/1.12 var(--sans); letter-spacing: -0.01em; margin: 6pt 0 0 0; color: var(--ink); }
+.subtitle { font: 400 13pt/1.35 var(--sans); color: var(--ink2); margin: 8pt 0 0 0; }
+.meta { font: 400 8.5pt/1.45 var(--sans); color: var(--muted); margin: 10pt 0 0 0; }
+.document .titleblock { margin-top: 30mm; padding-bottom: 16pt; }
+.document .titleblock h1 { font-size: 32pt; }
+.document .titleblock .subtitle { font-size: 14pt; }
+
+/* Contents (document). Page numbers are filled in by a second render pass. */
+nav.toc { margin-top: 16pt; }
+nav.toc h2 { font: 700 8pt/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent);
+  margin: 0 0 6pt 0; border: 0; padding: 0; break-before: auto; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li { margin: 0; }
+nav.toc a { display: flex; align-items: baseline; gap: 6pt; color: var(--ink); text-decoration: none;
+  font: 400 9.5pt/1.75 var(--sans); }
+nav.toc a .t { flex: 0 1 auto; }
+nav.toc a .dots { flex: 1 1 auto; border-bottom: 0.75pt dotted var(--line); transform: translateY(-3pt); }
+nav.toc a .p { flex: 0 0 auto; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+nav.toc li.l1 > a { font-weight: 600; }
+nav.toc li.l2 > a { padding-left: 14pt; font-size: 9pt; color: var(--ink2); line-height: 1.6; }
+nav.toc li.l3 > a { padding-left: 28pt; font-size: 8.5pt; color: var(--ink2); line-height: 1.55; }
+.document main { break-before: page; }
+
+/* Headings: sans, ink, an accent rule above top-level sections. */
+h1, h2, h3, h4, h5, h6 { font-family: var(--sans); color: var(--ink); break-after: avoid; }
+main h1 { font: 700 17pt/1.2 var(--sans); margin: 22pt 0 8pt 0; padding-top: 8pt; border-top: 2pt solid var(--accent); }
+main h2 { font: 700 13.5pt/1.25 var(--sans); margin: 20pt 0 6pt 0; }
+main h3 { font: 700 11pt/1.3 var(--sans); margin: 14pt 0 4pt 0; }
+main h4, main h5, main h6 { font: 600 10pt/1.35 var(--sans); margin: 12pt 0 3pt 0; color: var(--ink2); }
+/* When h1 is the title (no other h1s), h2 is the top section level. */
+main.h2top h2 { font-size: 15pt; padding-top: 8pt; border-top: 2pt solid var(--accent); margin-top: 24pt; }
+main.h2top h3 { font-size: 12pt; margin-top: 16pt; }
+main.h2top h4 { font: 700 10.5pt/1.3 var(--sans); color: var(--ink); }
+main > :first-child { margin-top: 0; }
+.newpage { break-before: page; }
+
+p { margin: 0 0 7pt 0; text-align: left; hanging-punctuation: first; }
+a { color: var(--accent); text-decoration: none; }
+strong, b { font-weight: 700; }
+ul, ol { margin: 0 0 8pt 0; padding-left: 16pt; }
+li { margin: 0 0 2.5pt 0; }
+li > p { margin-bottom: 3pt; }
+li::marker { color: var(--accent); font-family: var(--sans); }
+ol > li::marker { font-weight: 600; font-size: .92em; }
+hr { border: 0; border-top: 0.75pt solid var(--line); margin: 14pt 0; }
+blockquote { margin: 8pt 0 10pt 0; padding: 2pt 0 2pt 12pt; border-left: 3pt solid var(--accent); color: var(--ink2); }
+blockquote p:last-child { margin-bottom: 0; }
+dl { margin: 0 0 8pt 0; } dt { font: 700 .95rem/1.4 var(--sans); margin-top: 6pt; } dd { margin: 1pt 0 0 14pt; }
+sup, sub { line-height: 0; }
+
+/* Code */
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .5pt 3pt; border-radius: 2.5pt;
+  overflow-wrap: anywhere; }
+pre { font: 400 8.2pt/1.45 var(--mono); background: var(--code-bg); border: 0.75pt solid var(--line); border-left: 2.5pt solid var(--accent);
+  border-radius: 3pt; padding: 7pt 9pt; margin: 4pt 0 10pt 0; white-space: pre-wrap; overflow-wrap: anywhere;
+  break-inside: avoid; }
+pre code { background: none; padding: 0; font-size: inherit; border-radius: 0; }
+
+/* Tables: sans, ruled like the deck, header repeats on every page. */
+table { border-collapse: collapse; width: 100%; margin: 6pt 0 4pt 0; font: 400 8.6pt/1.38 var(--sans); }
+thead { display: table-header-group; }
+table { break-inside: avoid; }  /* a table that fits on a page stays on one; a longer one breaks between rows */
+tr { break-inside: avoid; }
+th { text-align: left; font: 700 7.2pt/1.3 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink2);
+  border-bottom: 1.25pt solid var(--ink); padding: 4pt 6pt; vertical-align: bottom; background: var(--paper); }
+td { border-bottom: 0.5pt solid var(--line); padding: 4pt 6pt; vertical-align: top; }
+td code, th code { font-size: .92em; }
+.table-caption { font: 400 7.8pt/1.4 var(--sans); color: var(--muted); margin: 3pt 0 12pt 0; }
+table + :not(.table-caption) { margin-top: 10pt; }
+
+/* Figures */
+figure { margin: 8pt auto 12pt auto; break-inside: avoid; }
+figure img, p img { max-width: 100%; height: auto; display: block; }
+figure img, figure > svg { margin: 0 auto; }
+main svg { max-width: 100%; height: auto; }
+figure > svg { display: block; }
+figcaption { font: 400 8pt/1.4 var(--sans); color: var(--ink2); margin-top: 5pt; }
+
+/* Callouts: the summary box, notes, and the captain-question card. */
+.summary, .note, .callout { background: var(--paper); border: 0.75pt solid var(--line); border-radius: 4pt;
+  padding: 9pt 12pt 3pt 12pt; margin: 6pt 0 12pt 0; }
+main :is(.summary, .note, .callout) > :is(h2, h3, h4) { margin: 0 0 5pt 0; border: 0; padding: 0;
+  font: 700 8pt/1.3 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.q { background: var(--card); border: 0.75pt solid var(--line); border-left: 3pt solid var(--accent); border-radius: 4pt;
+  padding: 8pt 12pt 3pt 12pt; margin: 6pt 0 10pt 0; break-inside: avoid; }
+main .q > :is(h2, h3, h4) { margin: 0 0 4pt 0; padding: 0; border: 0; font: 700 11pt/1.3 var(--sans); }
+.q p { font-size: .96rem; color: var(--ink2); margin-bottom: 5pt; }
+.q p strong { color: var(--ink); }
+
+/* Small marks: a recommendation badge, a time-sensitive flag, end notes. */
+.rec, .flag { font: 700 7pt/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: 1.5pt 4pt;
+  border-radius: 2.5pt; vertical-align: .1em; white-space: nowrap; }
+.rec { background: var(--accent); color: #fff; }
+.flag { background: #fbe9e8; color: var(--red); }
+.endnotes { margin-top: 14pt; border-top: 0.75pt solid var(--line); padding-top: 8pt; font-size: .9rem; color: var(--ink2); }
+
+/* Cover block written as a fenced div (pandoc memos): same look as the title block. */
+.cover { border-bottom: 1.5pt solid var(--ink); padding-bottom: 12pt; margin-bottom: 18pt; }
+main .cover :is(h1, .title) { font: 700 24pt/1.12 var(--sans); margin: 6pt 0 0 0; border: 0; padding: 0; }
+
+/* Pygments, in the house palette */
+.hl .c, .hl .c1, .hl .cm, .hl .ch, .hl .cs, .hl .cp { color: var(--muted); font-style: italic; }
+.hl .k, .hl .kd, .hl .kn, .hl .kr, .hl .kc, .hl .kt, .hl .ow { color: var(--accent); font-weight: 700; }
+.hl .s, .hl .s1, .hl .s2, .hl .sb, .hl .sd, .hl .se, .hl .sh, .hl .si, .hl .sx, .hl .sr, .hl .ss { color: #2b7a55; }
+.hl .m, .hl .mi, .hl .mf, .hl .mh, .hl .mo, .hl .il { color: #a26a0f; }
+.hl .nf, .hl .fm, .hl .nc, .hl .nn { color: #1f4f9a; font-weight: 600; }
+.hl .nb, .hl .bp, .hl .nt, .hl .na { color: #8a3f8f; }
+.hl .gd { color: var(--red); } .hl .gi { color: var(--hit); } .hl .gh, .hl .gu { color: var(--accent); font-weight: 700; }
+.hl .err { color: var(--red); }

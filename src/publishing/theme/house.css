@@ -1,0 +1,87 @@
+/* The vendored house fonts (Noto, SIL OFL 1.1: fonts/OFL.txt). Rendering never uses host fonts:
+   the build fails on a glyph these faces do not cover. Re-vendor with tools/vendor-fonts.py. */
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; }
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Publishing Mono"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Publishing Mono"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Publishing Symbols"; src: url("fonts/NotoSansSymbols-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Publishing Symbols 2"; src: url("fonts/NotoSansSymbols2-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Publishing Math"; src: url("fonts/NotoSansMath-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+/* Common family names resolve to the vendored faces too, so content that names one (an SVG
+   diagram, a pasted style) renders the same on every host. A generic family (sans-serif) does
+   not: it reaches the host's fonts, and the build's font check fails it. */
+@font-face { font-family: "Noto Sans"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Noto Sans"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Noto Sans"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Noto Sans"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Liberation Sans"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Liberation Sans"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Liberation Sans"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Liberation Sans"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "DejaVu Sans"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "DejaVu Sans"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "DejaVu Sans"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "DejaVu Sans"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Arial"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Arial"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Arial"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Arial"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Helvetica"; src: url("fonts/NotoSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Helvetica"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Helvetica"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Helvetica"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Noto Serif"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Noto Serif"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Noto Serif"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Noto Serif"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Liberation Serif"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Liberation Serif"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Liberation Serif"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Liberation Serif"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "DejaVu Serif"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "DejaVu Serif"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "DejaVu Serif"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "DejaVu Serif"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Times New Roman"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Times New Roman"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Times New Roman"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Times New Roman"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Times"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Times"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Times"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Times"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Georgia"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Georgia"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Georgia"; src: url("fonts/NotoSerif-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Georgia"; src: url("fonts/NotoSerif-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
+@font-face { font-family: "Noto Sans Mono"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Noto Sans Mono"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Liberation Mono"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Liberation Mono"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "DejaVu Sans Mono"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "DejaVu Sans Mono"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Courier New"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Courier New"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Menlo"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Menlo"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Consolas"; src: url("fonts/NotoSansMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Consolas"; src: url("fonts/NotoSansMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+:root {
+  --fallback: "Publishing Symbols", "Publishing Symbols 2", "Publishing Math";
+  --sans: "Publishing Sans", var(--fallback);
+  --serif: "Publishing Serif", var(--fallback);
+  --mono: "Publishing Mono", var(--fallback);
+}
+/* The house palette: paper, ink, one accent. Shared by every format. */
+:root {
+  --paper: #f7f6f2; --card: #ffffff; --ink: #1d2433; --ink2: #4a5163; --muted: #8a8f9c;
+  --line: #dcd9d0; --accent: #5b4bd6; --accent-soft: #ece9fb; --code-bg: #f4f3ef;
+  --hit: #2e9e6b; --missed: #e3a33b; --red: #d0453d;
+}
