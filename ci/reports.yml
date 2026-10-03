@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7          # add `with: { lfs: true }` if the PDFs are in LFS
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0
       - run: |
           P="uvx --from git+https://github.com/witt3rd/publishing@v$(sed -n 's/^publishing *= *"\(.*\)"/\1/p' docs/report.toml) publishing"
           $P setup --with-deps && $P check
