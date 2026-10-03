@@ -1,6 +1,7 @@
-"""publishing new | build | check | publish | setup | compare"""
+"""publishing new | build | check | publish | setup | compare | html"""
 import argparse
 import html
+import json
 import os
 import shutil
 import subprocess
@@ -14,6 +15,7 @@ from .build import BuildError, build, check, deck_html, discover, resolve
 from .config import ConfigError, load
 from .publish import PublishError, publish
 from .render import Renderer
+from .usercontent import Limits, UserContentError, UserContentRenderer, render_html
 
 REPO = "https://github.com/witt3rd/publishing"
 
@@ -52,6 +54,13 @@ def _sources(a, cfg):
     return sources, orphans
 
 
+def _renderer(a, cfg):
+    """The trusted renderer, or user-content mode when `--user-content` or report.toml asks for it."""
+    if a.user_content or cfg.user_content:
+        return UserContentRenderer(cfg.user_content or Limits())
+    return Renderer()
+
+
 def cmd_build(a) -> int:
     if a.output and len(a.targets) != 1:
         sys.exit("publishing: --output takes exactly one source")
@@ -63,11 +72,11 @@ def cmd_build(a) -> int:
     if not sources:
         sys.exit("publishing: nothing to build (no source folders under docs/)")
     failed = 0
-    with Renderer() as r:
+    with _renderer(a, cfg) as r:
         for s in sources:
             try:
                 state = build(s, cfg, r, force=a.force, png=Path(a.png) / s.pdf.stem if a.png else None)
-            except BuildError as e:
+            except (BuildError, UserContentError) as e:
                 print(f"publishing: {e}", file=sys.stderr)
                 failed += 1
                 continue
@@ -89,11 +98,11 @@ def cmd_check(a) -> int:
         else:
             sources.append(resolve(p, cfg))
     problems = [f"{_rel(o)}: no source (a folder {o.stem}/ or a [[document]] entry)" for o in orphans]
-    with Renderer() as r:
+    with _renderer(a, cfg) as r:
         for s in sources:
             try:
                 bad = check(s, cfg, r)
-            except BuildError as e:
+            except (BuildError, UserContentError) as e:
                 bad = str(e)
             if bad:
                 problems.append(bad)
@@ -171,6 +180,31 @@ def cmd_compare(a) -> int:
     return 0
 
 
+def cmd_html(a) -> int:
+    """A person's HTML file to PDF, always in user-content mode: the entry for services."""
+    out = Path(a.output)
+    if out.exists():
+        sys.exit(f"publishing: {out} exists; never overwrite")
+    for name in ("max_bytes", "max_pages", "timeout", "max_memory"):
+        if getattr(a, name) is not None and getattr(a, name) <= 0:
+            sys.exit(f"publishing: --{name.replace('_', '-')} must be positive")
+    d = Limits()
+    limits = Limits(max_bytes=a.max_bytes or d.max_bytes, max_pages=a.max_pages or d.max_pages,
+                    timeout=a.timeout or d.timeout, max_memory_mb=a.max_memory or d.max_memory_mb,
+                    allow_js=a.allow_js, require_netns=a.require_netns)
+    try:
+        r = render_html(Path(a.source), out, paper=a.paper, limits=limits)
+    except UserContentError as e:
+        sys.exit(f"publishing: {e}")
+    if a.json:
+        print(json.dumps({"output": str(out), "pages": r.pages, "blocked": r.blocked, "sandboxed": r.sandboxed,
+                          "netns": r.netns}))
+    else:
+        print(f"wrote {out} ({r.pages} pages; {len(r.blocked)} request(s) refused; "
+              f"network namespace {'on' if r.netns else 'off'})")
+    return 0
+
+
 def _rel(p: Path) -> str:
     try:
         return str(p.resolve().relative_to(Path.cwd()))
@@ -200,6 +234,8 @@ def main(argv=None) -> int:
             p.add_argument("--png", metavar="DIR", help="also write one PNG per page under DIR/<name>/")
         else:
             p.set_defaults(format=None, output=None)
+        p.add_argument("--user-content", action="store_true",
+                       help="render as untrusted content: sandbox on, no network, no files outside the source")
         p.set_defaults(fn=fn)
 
     p = sub.add_parser("publish", help="copy a built report to ~/Documents/<folder>/ (never overwrites)")
@@ -224,6 +260,19 @@ def main(argv=None) -> int:
     p.add_argument("--old-label", default="Before")
     p.add_argument("--new-label", default="After")
     p.set_defaults(fn=cmd_compare)
+
+    p = sub.add_parser("html", help="render an untrusted HTML file to PDF (always user-content mode)")
+    p.add_argument("source", help="the HTML file; it may load files from its own folder only")
+    p.add_argument("-o", "--output", required=True, help="the PDF path (never overwritten)")
+    p.add_argument("--paper", choices=("letter", "a4"), default="letter", help="unless the page sets @page size")
+    p.add_argument("--allow-js", action="store_true", help="run the page's script (still no network)")
+    p.add_argument("--max-bytes", type=int, help="cap on the page plus what it loads (default 50 MiB)")
+    p.add_argument("--max-pages", type=int, help="page cap (default 300)")
+    p.add_argument("--timeout", type=float, help="wall-clock seconds (default 60)")
+    p.add_argument("--max-memory", type=int, metavar="MB", help="memory cap of the render (default 2048)")
+    p.add_argument("--require-netns", action="store_true", help="fail unless the render gets no network namespace")
+    p.add_argument("--json", action="store_true", help="print the result as one JSON line")
+    p.set_defaults(fn=cmd_html)
 
     a = ap.parse_args(argv)
     try:
