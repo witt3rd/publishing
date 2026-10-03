@@ -13,6 +13,9 @@ import sys
 import threading
 import zipfile
 
+import re
+from pathlib import Path
+
 import pytest
 
 from publishing import extract as ex
@@ -289,3 +292,105 @@ def test_markitdown_is_the_pinned_version():
     assert version("markitdown") == ex.MARKITDOWN
     assert f"markitdown[pdf,docx,pptx,xlsx]=={ex.MARKITDOWN}" in open(
         os.path.join(os.path.dirname(__file__), "..", "pyproject.toml")).read()
+
+
+# --- PDF structure: pages (form feeds) and paragraphs survive, for Chromium output and forms -----
+
+SAMPLES = Path(__file__).resolve().parent / "fixtures"  # Chromium-made, copies of docs/samples
+
+
+def _pdf_pages(pages: list[list[tuple[int, int, str]]]) -> bytes:
+    """A small PDF: each page a list of (x, y, text) in Helvetica 10."""
+    n = len(pages)
+    objs = ["<< /Type /Catalog /Pages 2 0 R >>",
+            f"<< /Type /Pages /Kids [{' '.join(f'{3 + 2 * i} 0 R' for i in range(n))}] /Count {n} >>"]
+    for i, items in enumerate(pages):
+        stream = "BT /F1 10 Tf " + " ".join(f"1 0 0 1 {x} {y} Tm ({t}) Tj" for x, y, t in items) + " ET"
+        objs.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents {4 + 2 * i} 0 R "
+                    f"/Resources << /Font << /F1 {3 + 2 * n} 0 R >> >> >>")
+        objs.append(f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream")
+    objs.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    out, offsets = b"%PDF-1.4\n", []
+    for i, o in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += f"{i} 0 obj\n{o}\nendobj\n".encode()
+    xref = len(out)
+    out += f"xref\n0 {len(objs) + 1}\n0000000000 65535 f \n".encode()
+    out += "".join(f"{o:010d} 00000 n \n" for o in offsets).encode()
+    return out + f"trailer\n<< /Size {len(objs) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+
+
+def _form_pdf() -> bytes:
+    """Three pages of borderless three-column rows: markitdown 0.1.8 takes these for forms."""
+    page = [(72 + 150 * c, 700 - 20 * r, f"{h} {r}") for r in range(8) for c, h in enumerate(("Item", "Qty", "Price"))]
+    return _pdf_pages([page, page, page])
+
+
+def _text(tmp_path, name, data) -> str:
+    src = tmp_path / name
+    src.write_bytes(data)
+    return ex.extract(src).read_text(encoding="utf-8")
+
+
+def _paragraphs(text: str) -> list[str]:
+    return [p for p in re.split(r"\n\s*\n", text.replace("\f", "\n\n")) if p.strip()]
+
+
+@needs_markitdown
+@pytest.mark.parametrize("name,pages", [("house-style-deck-v1.pdf", 4), ("house-style-memo-v1.pdf", 2),
+                                        ("house-style-document-v1.pdf", 3)])
+def test_chromium_pdf_keeps_pages_and_paragraphs(tmp_path, name, pages):
+    text = _text(tmp_path, name, (SAMPLES / name).read_bytes())
+    assert text.count("\f") in (pages, pages - 1)
+    assert len(_paragraphs(text)) >= 5 * pages  # blank-line separated, not one block per page
+    assert "ﬁ" not in text and "ﬀ" not in text  # ligatures are letters
+    assert not re.search(r"\b(?:[A-Z] ){4,}[A-Z]\b", text)  # kickers are closed up
+    assert "PUBLISHING" in text
+
+
+@needs_markitdown
+def test_form_like_pdf_keeps_its_pages(tmp_path):
+    data = _form_pdf()
+    from markitdown import MarkItDown
+    src = tmp_path / "f.pdf"
+    src.write_bytes(data)
+    # the reason for the fix: markitdown's own PDF converter loses the page breaks on this file
+    assert "\f" not in MarkItDown(enable_plugins=False, exiftool_path="").convert_local(str(src)).markdown
+    text = _text(tmp_path, "form.pdf", data)
+    assert text.count("\f") in (3, 2)
+    assert "Price 7" in text
+
+
+@needs_markitdown
+def test_plain_pdf_text_is_pdfminers_after_normalisation(tmp_path):
+    from pdfminer.high_level import extract_text
+
+    def norm(t):
+        t = "\n".join(line.rstrip() for line in t.replace("\r\n", "\n").split("\n"))
+        return re.sub(r"\n{3,}", "\n\n", t)
+    data = _pdf_pages([[(72, 700, "First paragraph."), (72, 640, "Second paragraph.")], [(72, 700, "Page two.")]])
+    src = tmp_path / "p.pdf"
+    src.write_bytes(data)
+    assert norm(_text(tmp_path, "q.pdf", data)) == norm(extract_text(str(src)))
+    assert _text(tmp_path, "r.pdf", data).count("\f") in (1, 2)
+
+
+def test_close_kicker_only_touches_letter_spaced_lines():
+    assert ex._close_kicker("D E S I G N   N O T E") == "DESIGN NOTE"
+    assert ex._close_kicker("P U B L I S H I N G   ·   T H E   H OU S E") == "PUBLISHING · THE HOUSE"
+    for line in ("A B C", "Option A B C D E is fine", "I do not know"):
+        assert ex._close_kicker(line) == line
+
+
+@needs_markitdown
+def test_no_text_is_exit_4_and_a_parser_failure_stays_1(tmp_path):
+    blank = tmp_path / "blank.pdf"
+    blank.write_bytes(_pdf_pages([[]]))
+    with pytest.raises(ex.NoText) as e:
+        ex.extract(blank)
+    assert e.value.exit_code == 4 and not (tmp_path / "blank.md").exists()
+    broken = tmp_path / "broken.pdf"
+    broken.write_bytes(b"not a pdf")
+    with pytest.raises(ex.ExtractError) as e:
+        ex.extract(broken)
+    assert e.value.exit_code == 1 and not isinstance(e.value, ex.NoText)

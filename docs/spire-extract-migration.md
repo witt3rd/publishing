@@ -20,8 +20,8 @@ base. No install at request time: drop the runtime `pip install`.
 
 ## Exit codes
 
-0 extracted (stdout: the markdown path); 1 failed or found no text (stderr: one message, at most 400
-characters); 2 usage (unsupported type, missing source, output exists); 3 markitdown missing.
+0 extracted (stdout: the markdown path); 1 failed (stderr: one message, at most 400 characters); 2 usage (unsupported
+type, missing source, output exists); 3 markitdown missing; 4 found no text.
 
 ## Behaviour differences
 
@@ -29,7 +29,7 @@ characters); 2 usage (unsupported type, missing source, output exists); 3 markit
   The PDF, DOCX, PPTX and XLSX parsers are installed (the bare `pip install markitdown` has none of
   them, so those formats were only extractable if the venue added extras).
 - **Empty is an error.** A scanned PDF, or a file with no text, used to yield an empty string; it now
-  exits 1 (`found no text`). Treat it as "no text layer", not a crash.
+  exits 4 (`found no text`). Treat it as "no text layer", not a crash.
 - **File types are allow-listed.** `.pdf .docx .pptx .xlsx .html .htm .csv .json .xml .epub .txt`.
   Everything else exits 2 before any parser runs: images and audio (they need exiftool, speech or an
   LLM), archives, `.doc`/`.xls`/`.ppt`, URLs, YouTube links.
