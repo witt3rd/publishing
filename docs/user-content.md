@@ -109,11 +109,12 @@ result); `--network none` is the container's own guarantee on top of it.
 
 ### Hosts
 
-The kernel must allow unprivileged user namespaces. On Ubuntu 23.10 and later, AppArmor restricts
-them (`kernel.apparmor_restrict_unprivileged_userns=1`): either an AppArmor profile that grants
-`userns` to the pinned Chromium binary, or the sysctl set to 0 (what this repo's CI does for its
-host-level tests). The container job in CI runs with the runner's setting untouched and records it.
-Arch (roger) and Debian allow them by default.
+The kernel must allow unprivileged user namespaces. Inside Docker this needs no host change, even on
+Ubuntu 24.04, whose AppArmor restricts them for unconfined processes
+(`kernel.apparmor_restrict_unprivileged_userns=1`): CI's container job runs on such a runner, with the
+setting left at 1, and passes. Run directly on an Ubuntu 23.10+ host (not in a container), the sandbox
+needs an AppArmor profile granting `userns` to the pinned Chromium binary, or the sysctl set to 0 (what
+this repo's host-level CI job does). Arch (roger) and Debian allow them by default.
 
 Playwright publishes no musl build, so user-content mode does not run in an Alpine image (Spire's
 venue image): the venue calls a glibc image that carries publishing.
