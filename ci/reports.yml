@@ -1,0 +1,14 @@
+# Copy to .github/workflows/reports.yml in a repo that builds reports with publishing.
+# It rebuilds every PDF under docs/ with the version docs/report.toml pins, and fails on a difference.
+name: reports rebuild from source
+on: { pull_request: { paths: ['docs/**'] }, workflow_dispatch: {} }
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7          # add `with: { lfs: true }` if the PDFs are in LFS
+      - uses: astral-sh/setup-uv@v10
+      - run: |
+          P="uvx --from git+https://github.com/witt3rd/publishing@v$(sed -n 's/^publishing *= *"\(.*\)"/\1/p' docs/report.toml) publishing"
+          $P setup --with-deps && $P check

@@ -1,0 +1,17 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request: {}
+  workflow_dispatch: {}
+permissions: { contents: read }
+jobs:
+  test:
+    name: tests and the samples rebuild from source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+      - run: uv sync --locked
+      - run: uv run publishing setup --with-deps
+      - run: uv run pytest -q
+      - run: uv run publishing check
