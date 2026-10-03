@@ -39,6 +39,8 @@ def cmd_new(a) -> int:
     tpl = resources.files("publishing").joinpath("templates", a.format)
     folder.mkdir(parents=True)
     for f in tpl.iterdir():
+        if not f.is_file():  # an installer's bytecode cache (__pycache__ beside slides.py)
+            continue
         text = f.read_text().replace("{name}", folder.name).replace("{rel}", str(folder))
         text = text.replace("{kicker}", cfg.project or "Report")
         (folder / f.name).write_text(text)
