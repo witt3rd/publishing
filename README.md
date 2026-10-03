@@ -24,7 +24,16 @@ publishing build [SOURCE...] [--png DIR]   # build PDFs beside their sources (de
 publishing check [PATH...]                 # fail unless every PDF matches a fresh build of its source
 publishing publish docs/notes/topic-v1     # copy the PDF to ~/Documents/<folder>/, never overwriting
 publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes.md   # before/after deck
+publishing html PAGE.html -o OUT.pdf [--json]   # a person's HTML to PDF: always user-content mode
+publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
 ```
+
+**User content.** Anything made from a person's content renders in user-content mode: Chromium's
+sandbox on, no network, nothing outside the document's own folder, no script, and caps on bytes, pages,
+time and memory. `publishing html` always uses it; a build uses it with `--user-content`,
+`[user_content] enabled = true` in report.toml, or `PUBLISHING_USER_CONTENT=1` (for a service's
+image). The container flags it needs (non-root, `ci/seccomp-chromium.json`, `--network none`) and its
+residual risks: [docs/user-content.md](docs/user-content.md). The plain build is for trusted sources.
 
 ## Conventions
 
@@ -55,6 +64,7 @@ publishing compare OLD.pdf NEW.pdf -o OUT.pdf --pair 5:7:"A table" --notes notes
 
 ```sh
 uv sync && uv run publishing setup && uv run pytest -q && uv run publishing check
+tools/usercontent-check.sh   # the user-content tests in a locked-down container (needs Docker)
 ```
 
 The fonts are Noto (SIL OFL 1.1, `src/publishing/theme/fonts/OFL.txt`); `tools/vendor-fonts.py`

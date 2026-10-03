@@ -13,5 +13,19 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
       - run: uv sync --locked
       - run: uv run publishing setup --with-deps
+      # User-content mode runs Chromium with its sandbox on, which needs unprivileged user namespaces;
+      # Ubuntu 24.04 restricts them through AppArmor (docs/user-content.md, "Hosts").
+      - name: allow unprivileged user namespaces (Chromium's sandbox)
+        run: |
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - run: uv run pytest -q
       - run: uv run publishing check
+  user-content-container:
+    name: user-content mode in a locked-down container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: the host's user-namespace setting (left as the runner has it)
+        run: sysctl kernel.apparmor_restrict_unprivileged_userns || true
+      - run: tools/usercontent-check.sh
