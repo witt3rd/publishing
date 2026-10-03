@@ -22,12 +22,23 @@ exact pin, no overwrite, an empty result is an error, bounded stderr, and no net
 - Failure: a child that fails carries at most 400 characters of its stderr (`Type: message`);
   an empty or whitespace-only result is an error.
 
+- PDF: read with pdfminer.six (markitdown's own PDF dependency, so the same pin) directly, not
+  through markitdown's PDF converter: that converter switches a page it takes for a form to
+  pdfplumber text, which has no form feed between pages and no blank line between paragraphs.
+  pdfminer's output keeps both: one `\\f` ends each page, a blank line separates paragraphs. Two
+  repairs are applied on top, the ones markitdown's path made: typographic ligatures (`ﬁ`) become
+  letters, and letter-spaced kickers (`D E S I G N`) are closed up.
+- Not supported: `.msg` and `.rtf` (markitdown has no RTF reader, and Outlook needs an extra
+  dependency); they are refused with exit 2 like any other unlisted type.
+
 Exit codes of the command: 0 extracted, 1 failed, 2 usage (unsupported type, no such source, the
-output exists), 3 markitdown is not installed (`pip install 'publishing[extract]'`).
+output exists), 3 markitdown is not installed (`pip install 'publishing[extract]'`), 4 the document
+has no text (a scanned PDF; the file was read fine).
 """
 import argparse
 import importlib.util
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -65,6 +76,10 @@ class ExtractorNotFound(ExtractError):
     exit_code = 3
 
 
+class NoText(ExtractError):
+    exit_code = 4
+
+
 def is_supported(path) -> bool:
     return Path(path).suffix.lower() in SUFFIXES
 
@@ -96,7 +111,7 @@ def extract(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
             raise ExtractError(f"markitdown output is {size} bytes, over the {max_bytes}-byte cap")
         with open(output, "rb") as f:
             if not f.read(max_bytes + 1).strip():
-                raise ExtractError(f"markitdown found no text in {src.name}")
+                raise NoText(f"markitdown found no text in {src.name}")
         dest.parent.mkdir(parents=True, exist_ok=True)
         try:
             with open(output, "rb") as f, open(dest, "xb") as out:
@@ -156,6 +171,31 @@ def _block_network() -> None:
         setattr(socket, name, refuse)
 
 
+_LIGATURES = {"\ufb00": "ff", "\ufb01": "fi", "\ufb02": "fl", "\ufb03": "ffi", "\ufb04": "ffl",
+              "\ufb05": "st", "\ufb06": "st"}
+_KICKER_TOKEN = re.compile(r"[A-Z0-9·&/-]{1,2}")
+
+
+def _close_kicker(line: str) -> str:
+    """`D E S I G N   N O T E` -> `DESIGN NOTE`: a line of at least five one or two character upper-case
+    tokens, at least four of one character; words are the 2+ space gaps. Any other line is unchanged."""
+    tokens = line.split()
+    if len(tokens) < 5 or sum(len(t) == 1 for t in tokens) < 4 or not all(_KICKER_TOKEN.fullmatch(t) for t in tokens):
+        return line
+    return " ".join(w.replace(" ", "") for w in re.split(r" {2,}", line.strip()))
+
+
+def pdf_text(src: str) -> str:
+    """The text of a PDF, pdfminer's layout kept (form feed per page, blank line per paragraph)."""
+    from pdfminer.high_level import extract_text
+    text = extract_text(src)
+    for ligature, letters in _LIGATURES.items():
+        text = text.replace(ligature, letters)
+    return "\n".join(_close_kicker(line) if "\f" not in line else
+                     "\f" * line.count("\f") + _close_kicker(line.replace("\f", ""))
+                     for line in text.split("\n"))
+
+
 def _worker(src: str, out: str) -> int:
     _block_network()
     try:
@@ -165,8 +205,10 @@ def _worker(src: str, out: str) -> int:
         return 3
     try:
         # No plugins, no LLM client, no exiftool (None is "look it up", so point it nowhere real).
-        result = MarkItDown(enable_plugins=False, exiftool_path="").convert_local(src)
-        text = result.markdown
+        if src.lower().endswith(".pdf"):
+            text = pdf_text(src)
+        else:
+            text = MarkItDown(enable_plugins=False, exiftool_path="").convert_local(src).markdown
     except BaseException as e:  # any parser failure is the call's failure, with one bounded message
         print(f"{type(e).__name__}: {' '.join(str(e).split())}", file=sys.stderr)
         return 1
