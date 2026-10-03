@@ -1,4 +1,15 @@
+import resource
+
 import pytest
+
+
+@pytest.fixture
+def no_core_dump():
+    """A `preexec_fn` for a test that makes a process fail on purpose: RLIMIT_CORE 1 makes the kernel skip
+    the core dump, the pipe to systemd-coredump included, so the failure leaves no core and no desktop
+    "Process crashed" notice. 0 is not enough: systemd-coredump still journals the crash, and the
+    notifier reads the journal (docs/user-content.md, "Testing")."""
+    return lambda: resource.setrlimit(resource.RLIMIT_CORE, (1, 1))
 
 
 @pytest.fixture(scope="session")

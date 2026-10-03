@@ -55,8 +55,14 @@ Each render is its own process tree, supervised by the caller:
    tree can reach any address. `require_netns` turns "where allowed" into "or fail".
 3. **Chromium's sandbox on, verified.** Chromium starts with `chromiumSandbox: true`. Before printing,
    the child checks through `/proc` that every renderer process sits in its own user or pid namespace
-   and that no process carries `--no-sandbox`; otherwise it fails. Where the sandbox cannot start,
-   Chromium itself refuses to launch. The mode never falls back to no sandbox.
+   and that no process carries `--no-sandbox`; otherwise it fails. Before Chromium launches, the child
+   checks that its sandbox can start: not root, and a new user namespace with new pid and network
+   namespaces, this user mapped into it, and one more user namespace inside (what Chromium's own
+   check does). Where that fails the render is refused (exit 3) and Chromium is never started:
+   Chromium's own refusal is a fatal check (`SIGTRAP`) that dumps core and, on a desktop, raises a
+   crash notice for every refused render. Chromium's refusal stays behind the check, which never
+   loosens the sandbox; it only moves the refusal ahead of the launch. The mode never falls back to
+   no sandbox.
 4. **No `file://` at all.** The page is served from the virtual origin `http://publishing.invalid`:
    `/doc/` is the document's own folder and `/_theme/` the house theme (public static files). Chromium
    refuses `file://` from an `http` page. A request is served only when its path, with no `..`, empty
@@ -142,7 +148,20 @@ Ubuntu 24.04, whose AppArmor restricts them for unconfined processes
 (`kernel.apparmor_restrict_unprivileged_userns=1`): CI's container job runs on such a runner, with the
 setting left at 1, and passes. Run directly on an Ubuntu 23.10+ host (not in a container), the sandbox
 needs an AppArmor profile granting `userns` to the pinned Chromium binary, or the sysctl set to 0 (what
-this repo's host-level CI job does). Arch (roger) and Debian allow them by default.
+this repo's host-level CI job does). Arch (roger) and Debian allow them by default. With the AppArmor
+restriction on, an unconfined process cannot see a profile that grants user namespaces to the Chromium
+binary alone, so there the pre-launch check leaves the answer to Chromium, and a host with neither the
+profile nor the sysctl refuses through Chromium's own check (a core dump).
+
+## Testing
+
+Some tests refuse a render on purpose: `test_no_sandbox_means_no_render*` take user namespaces away
+with `bwrap --disable-userns`, and `tools/usercontent-check.sh` step 1 runs under Docker's default seccomp
+profile. The pre-launch check refuses them before Chromium starts, so they leave no core dump. As a
+backstop for a regression they run with `RLIMIT_CORE` at 1 (the `no_core_dump` fixture, `--ulimit
+core=1`): at 1 the kernel skips the core dump and the pipe to `systemd-coredump` with it. `ulimit -c 0`
+is not enough on a desktop: `systemd-coredump` still journals the crash, and a crash notifier that reads
+the journal (Omarchy's `omarchy-crash-watch`) still raises a notice per crash.
 
 Playwright publishes no musl build, so user-content mode does not run in an Alpine image (Spire's
 venue image): the venue calls a glibc image that carries publishing.

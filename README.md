@@ -18,19 +18,19 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.5.1'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.5.2'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.5.1'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.5.2'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.5.1'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.5.2'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 
 # extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
-uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.5.1'
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.5.2'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -73,7 +73,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   line, figures, footnotes and highlighted code.
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.5.1"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.5.2"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -152,11 +152,11 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   else `~/.cache/publishing`) for the pinned install; `TMPDIR` for the temporary folder;
   `OFFICE_PDF_TESTS=1` makes the real-conversion test run, and fail without a converter.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.5.1 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.5.2 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.5.1' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.5.2' && publishing setup --convert --bin-dir /usr/local/bin`.
 
 ## Extract
 
@@ -197,7 +197,7 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   (markitdown has no RTF reader; Outlook needs another dependency): exit 2.
 - **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
 - **Containers.** The toolbox image carries the extract extra:
-  `docker run … publishing:0.5.1 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  `docker run … publishing:0.5.2 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
   extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
   CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
@@ -256,10 +256,10 @@ the command's). They are the headless render entry for services (the render prof
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.5.1 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.5.1 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.5.1 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.5.1 \
+docker build -t publishing:0.5.2 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.5.2 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.5.2 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.5.2 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 
