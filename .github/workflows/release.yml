@@ -1,0 +1,20 @@
+name: release
+# A merged version bump gets its tag and GitHub release; disagreeing versions fail the run loudly.
+# (The tags job in ci.yml audits history and keeps failing if a release is ever missed.)
+on:
+  push: { branches: [main], paths: [pyproject.toml, src/publishing/__init__.py, tools/release.sh] }
+  workflow_dispatch:
+    inputs:
+      dry_run: { description: "print what would be released, change nothing", type: boolean, default: true }
+permissions: { contents: write }
+concurrency: release
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0, fetch-tags: true }
+      - run: tools/release.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '' }}
