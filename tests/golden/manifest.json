@@ -1,0 +1,109 @@
+{
+  "convert": {
+    "outputs": {
+      "minimal.pdf": {
+        "bytes": 7422,
+        "sha256": "71a30a48c72a956f489267f58b5b5dcf36aa3b8fcf47b3bacc23c802b0f29f8d"
+      }
+    },
+    "toolchain": "office2pdf 0.6.7"
+  },
+  "media": {
+    "outputs": {
+      "audio-64k.mp3": {
+        "bytes": 8796,
+        "sha256": "6aba9ae641e684f75e5753629b39f5b135364a0171ba3ce7713a80099553c460"
+      },
+      "audio.flac": {
+        "bytes": 58752,
+        "sha256": "bc6f557400a5a3956450e86b48b1218fc7211f959eea8d1d0e4eb3beef5f78a0"
+      },
+      "audio.m4a": {
+        "bytes": 10149,
+        "sha256": "773e4fefd50bf3d0a98a34588329ec108523c1966c60e0ba9e58aff12a703305"
+      },
+      "audio.mp3": {
+        "bytes": 8770,
+        "sha256": "7e351b352f55edc25a14d030bd883a9370e4c8808225e9c6fa35d58b018d7251"
+      },
+      "audio.ogg": {
+        "bytes": 5756,
+        "sha256": "264dc2f5731f5d02fdba1edc8a2d13e34d84d12d4e0c1a8278b3752d169af11f"
+      },
+      "audio.opus": {
+        "bytes": 9566,
+        "sha256": "230b218c18f3edc3dd8b20ed2fb0d782194cc6a385b749d55e345c987b013569"
+      },
+      "audio.wav": {
+        "bytes": 90156,
+        "sha256": "e45b6e3160caba58b6628fa980149c351986fba6b96d8e529bb0d3478dfa74f3"
+      },
+      "concat.mp4": {
+        "bytes": 24437,
+        "sha256": "28cfe9147e52d79a84edb5e3616146b37c9ed25d1ab6967986773c932de313d9"
+      },
+      "thumbnail-w32.jpg": {
+        "bytes": 800,
+        "sha256": "965366589b9c6a44b7f4b9ec1c4f2f7ac69c19f202a26ee11cff84a882b6cef0"
+      },
+      "thumbnail.png": {
+        "bytes": 2595,
+        "sha256": "69ccfe3e790fc5c97066e435d0be3579eb81c04e6d52420c982d2752487794fa"
+      },
+      "video-h32.mp4": {
+        "bytes": 12382,
+        "sha256": "3ec261285dea967ef233e2531f472a9d9950214926ef8b0f14cd37b46fb38d53"
+      },
+      "video.mkv": {
+        "bytes": 12100,
+        "sha256": "ffe0c328acc0fbd315c44f728319b100443c1ed19d553a194bc38f9c863da3e5"
+      },
+      "video.mp4": {
+        "bytes": 12884,
+        "sha256": "ab484bdabe8c9b844af3a5575523bea6160b7a5cb6f99c3326c0598743ef3967"
+      },
+      "video.webm": {
+        "bytes": 12502,
+        "sha256": "635e9b1970e1d9e8c85a5926aca12a665e13edbf65a50645af5e5d94d3210315"
+      }
+    },
+    "toolchain": "ffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "pandoc": {
+    "outputs": {
+      "docx.html": {
+        "bytes": 4545,
+        "sha256": "94f989ef99d9e5ad1c84e0a7d9d6ed5e7fda6f19e69347c313bf6e987de31d57"
+      },
+      "docx.pdf": {
+        "bytes": 108486,
+        "sha256": "1df76ca9f3393829cb82784272876b5eeea492f41e365bb1331cff333182b4e5"
+      },
+      "html.docx": {
+        "bytes": 10460,
+        "sha256": "7c036948f8041d78919ec8112ca353e03e1b218531f8ddfdd267bf307bcecc01"
+      },
+      "html.pdf": {
+        "bytes": 78591,
+        "sha256": "5737943697fff8f87be3f82d350b9d9752296526e7179b06218aa6d696603209"
+      },
+      "md.docx": {
+        "bytes": 10961,
+        "sha256": "d83f339f7b1b333bf7a27fc538a42f7be04c85fa831cd259e521565a6a30879e"
+      },
+      "md.html": {
+        "bytes": 4449,
+        "sha256": "465afbcbb5ad74cee767f455594b9379eab8a139a84d8bc3f68705a6389b701d"
+      },
+      "md.pdf": {
+        "bytes": 108480,
+        "sha256": "231a02b0070d3cea8b56d71ea716150a1f4ea563b6f90ba42b319c860e9b94e0"
+      },
+      "odt.html": {
+        "bytes": 4508,
+        "sha256": "f8cf20ae63c52b01ffda1bb95e43ef2dbacce7f1b8a572f8d4b8ab254b91be62"
+      }
+    },
+    "toolchain": "pandoc 3.12; pdfTeX 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian)"
+  }
+}
