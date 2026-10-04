@@ -7,7 +7,7 @@ wrong for a page made from a person's upload: in v0.1.0 a page with
 `http://10.0.0.1/` is fetched, script runs and a meta refresh is followed.
 
 User-content mode renders a page as if it were hostile. The code is `src/publishing/usercontent.py`;
-the proof is `tests/test_usercontent.py` (hostile fixtures) and `tools/usercontent-check.sh` (the same
+the proof is `tests/test_usercontent.py` and `tests/test_usercontent_attacks.py` (hostile fixtures: traversal, other origins, symlinks, cumulative limits, script escapes) and `tools/usercontent-check.sh` (the same
 tests in a locked-down container, run in CI).
 
 ## Entries
