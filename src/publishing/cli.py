@@ -1,5 +1,5 @@
 """publishing new | build | check | publish | setup | compare | html | render-html | render-md | pdf-pages
-| convert (office2pdf, pandoc) | extract | media
+| convert (office2pdf, pandoc) | extract | media | a11y
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -192,6 +192,28 @@ def cmd_setup(a) -> int:
     return video.setup()
 
 
+def cmd_a11y(a) -> int:
+    """Check PDFs for tags, title, language and embedded fonts: exit 1 when any fails."""
+    from . import a11y
+
+    bad = 0
+    for name in a.pdfs:
+        path = Path(name)
+        if not pdf.is_pdf(path):
+            usage(f"{path} is not a PDF")
+        try:
+            problems, advice = a11y.check(path, kind=a.kind)
+        except Exception as e:  # a PDF pypdf cannot read is a failed check, not a crash
+            problems, advice = [f"unreadable: {type(e).__name__}: {e}"], []
+        print(f"{path}: " + ("ok" if not problems else f"{len(problems)} problem(s)"))
+        for p in problems:
+            print(f"  - {p}")
+        for p in advice:
+            print(f"  note: {p}")
+        bad += bool(problems)
+    return 1 if bad else 0
+
+
 def cmd_compare(a) -> int:
     """A house-style deck that puts pages of two PDFs side by side."""
     from .page import Deck
@@ -317,6 +339,11 @@ def main(argv=None) -> int:
     p.add_argument("--pandoc", action="store_true", help=f"the pinned pandoc {pandoc.VERSION}, checksummed")
     p.add_argument("--bin-dir", metavar="DIR", help="install office2pdf and pandoc as DIR/office2pdf, DIR/pandoc (default: the user cache)")
     p.set_defaults(fn=cmd_setup, needs_render=False)
+
+    p = sub.add_parser("a11y", help="fail unless each PDF is tagged, titled, in a language, with embedded fonts")
+    p.add_argument("pdfs", nargs="+")
+    p.add_argument("--kind", choices=("deck", "memo", "document"), help="memo and document also need bookmarks")
+    p.set_defaults(fn=cmd_a11y, needs_render=True)
 
     p = sub.add_parser("compare", help="a deck of two PDFs' pages side by side (before/after)")
     p.add_argument("old")
