@@ -366,6 +366,9 @@ the command's). They are the headless render entry for services (the render prof
 
 ## Services
 
+Adopting this as a service from another repo (image, entry points, pinning, Alpine vs Debian, example kit):
+[docs/service.md](docs/service.md).
+
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
