@@ -7,18 +7,19 @@ cd "$(dirname "$0")/.."
 budget=ci/budget.txt
 run=${1:-$(gh run list --workflow ci.yml --branch main --status success --limit 1 --json databaseId -q '.[0].databaseId')}
 repo=${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}
+jobs=$(mktemp); trap 'rm -f "$jobs"' EXIT
 gh api "repos/$repo/actions/runs/$run/jobs?per_page=100" --jq \
-  '.jobs[] | select(.conclusion=="success") | [.name, ((.completed_at|fromdateiso8601) - (.started_at|fromdateiso8601))] | @tsv' |
-python3 - "$budget" "$run" <<'PY'
+  '.jobs[] | select(.conclusion=="success") | [.name, ((.completed_at|fromdateiso8601) - (.started_at|fromdateiso8601))] | @tsv' > "$jobs"
+python3 - "$budget" "$run" "$jobs" <<'PY'
 import sys
-budget_file, run = sys.argv[1:]
+budget_file, run, jobs = sys.argv[1:]
 budgets = {}
 for line in open(budget_file):
     line = line.split("#")[0].strip()
     if line:
         sec, name = line.split(None, 1)
         budgets[name.strip()] = int(sec)
-rows = [l.rstrip("\n").split("\t") for l in sys.stdin if l.strip()]
+rows = [l.rstrip("\n").split("\t") for l in open(jobs) if l.strip()]
 over = 0
 print(f"CI time budget, run {run}")
 print(f"{'job':70} {'secs':>6} {'budget':>7}")
