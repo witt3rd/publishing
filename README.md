@@ -402,6 +402,19 @@ docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:
   run there under the same flags. Further converters join it as subcommands of the same CLI, each with its
   own tests, so a service keeps one image and one entry.
 
+## Accessibility
+
+`publishing a11y FILE.pdf [...] [--kind deck|memo|document]` checks that each PDF is tagged (`/MarkInfo`,
+a structure tree), has a title and a language, asks the viewer to show the title, embeds its fonts, and,
+for a memo or document, has bookmarks. It reads the PDF with pypdf (the render profile's pin; no Chromium,
+no network). Exit 0 clean, 1 a problem (each is printed), 2 usage. Figures without `/Alt` are a `note:`,
+not a failure: Chromium tags an inline SVG as a figure and writes no alternate text for it. The three
+house samples pass (`tests/test_a11y.py`).
+
+Not offered: **PDF/A output** (Chromium cannot write it; a conversion needs Ghostscript and a validator such
+as veraPDF, both outside the pinned profiles) and **PDF/UA validation** (this is a check of what the house
+renderer controls, not a conformance proof). Either would be its own profile.
+
 ## Develop
 
 ```sh
