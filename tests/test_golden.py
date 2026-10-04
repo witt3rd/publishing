@@ -1,4 +1,4 @@
-"""Golden fixtures for the media, pandoc and convert profiles (docs: tests/golden/README.md).
+"""Golden fixtures for the media, pandoc, convert, extract and render profiles (docs: tests/golden/README.md).
 
 Each case converts a committed input (tests/golden/inputs) and compares the output's sha256 with
 tests/golden/manifest.json: a profile bump (ffmpeg, pandoc, TeX Live, office2pdf, a base image or this
@@ -7,8 +7,15 @@ reproducible (see media._DETERMINISTIC, pandoc's SOURCE_DATE_EPOCH), so a change
 Review it, then regenerate with GOLDEN_UPDATE=1 and commit the manifest with the bump.
 
 The bytes belong to one toolchain, so a profile runs only in its own image (GOLDEN_PROFILE=media|pandoc|
-convert, set by the Dockerfile test stages) and skips elsewhere; a missing tool there fails.
+convert|extract|render, set by the Dockerfile test stages) and skips elsewhere; a missing tool there fails.
+
+The one documented tolerance is the render profile's PDF: Chromium stamps a fresh creation date and id on
+every PDF, so its bytes differ run to run. The render goldens pin what is stable instead, byte for byte:
+every page image and the thumbnail (same source, same bytes), and a text file with the PDF's page count
+and extracted text.
 """
+import functools
+import tempfile
 import hashlib
 import json
 import os
@@ -25,6 +32,26 @@ PROFILE = os.environ.get("GOLDEN_PROFILE")
 UPDATE = os.environ.get("GOLDEN_UPDATE") == "1"
 
 
+@functools.cache
+def _render_dir(name):
+    """Render one committed input once per session (trusted: the test stage has no seccomp/netns sandbox);
+    returns the folder holding img/ (page images, thumbnail) and out.pdf.txt (page count and text)."""
+    from publishing import pdf, renderhtml
+    work = Path(tempfile.mkdtemp(prefix="golden-render-"))
+    src = INPUTS / "render" / name
+    r = renderhtml.render(src, pdf=work / "out.pdf", png=work / "img", thumbnail=240, trusted=True)
+    (work / "out.pdf.txt").write_text(f"pages: {pdf.pages(work / 'out.pdf')}\n{pdf.text(work / 'out.pdf')}\n")
+    assert r.pages == pdf.pages(work / "out.pdf")
+    return work
+
+
+def _render_file(name, member):
+    def make(o):
+        d = _render_dir(name)
+        shutil.copyfile(d / "img" / member if member != "out.pdf.txt" else d / member, o)
+    return make
+
+
 def _toolchain(profile):
     def first(*cmd):
         return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.splitlines()[0]
@@ -32,11 +59,17 @@ def _toolchain(profile):
         return first("ffmpeg", "-version")
     if profile == "pandoc":
         return first("pandoc", "--version") + "; " + first("pdflatex", "--version")
+    if profile == "extract":
+        from importlib.metadata import version
+        return f"markitdown {version('markitdown')}; pypdfium2 {version('pypdfium2')}"
+    if profile == "render":
+        from importlib.metadata import version
+        return f"playwright {version('playwright')}; pypdfium2 {version('pypdfium2')}"
     return first("office2pdf", "--version")
 
 
 def _cases():
-    from publishing import convert as cv, media, pandoc
+    from publishing import convert as cv, extract as ex, media, pandoc
     md, html, docx, odt = (INPUTS / n for n in ("note.md", "page.html", "note.docx", "note.odt"))
     a, b = INPUTS / "clip-a.mp4", INPUTS / "clip-b.mp4"
     return {
@@ -68,6 +101,16 @@ def _cases():
         },
         "convert": {
             "minimal.pdf": lambda o: cv.convert(INPUTS / "minimal.docx", o),
+        },
+        "extract": {
+            f"{p.name}.md": (lambda p: lambda o: ex.extract(p, o))(p)
+            for p in sorted((INPUTS / "extract").glob("a.*"))
+        },
+        "render": {
+            **{f"pages.{m}": _render_file("pages.html", m)
+               for m in ("page-001.png", "page-002.png", "page-003.png", "thumbnail.png", "out.pdf.txt")},
+            **{f"memo.{m}": _render_file("memo.md", m)
+               for m in ("page-001.png", "thumbnail.png", "out.pdf.txt")},
         },
     }
 
@@ -118,6 +161,16 @@ def test_golden_pandoc(name, tmp_path):
 @pytest.mark.parametrize("name", _names("convert"))
 def test_golden_convert(name, tmp_path):
     _check("convert", name, tmp_path)
+
+
+@pytest.mark.parametrize("name", _names("extract"))
+def test_golden_extract(name, tmp_path):
+    _check("extract", name, tmp_path)
+
+
+@pytest.mark.parametrize("name", _names("render"))
+def test_golden_render(name, tmp_path):
+    _check("render", name, tmp_path)
 
 
 @pytest.mark.skipif(PROFILE is None or UPDATE, reason="runs in a profile image, not while regenerating")

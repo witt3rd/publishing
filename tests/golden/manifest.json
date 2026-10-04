@@ -8,6 +8,51 @@
     },
     "toolchain": "office2pdf 0.6.7"
   },
+  "extract": {
+    "outputs": {
+      "a.csv.md": {
+        "bytes": 48,
+        "sha256": "41c5a88bad309e9b6ff12b155573d33b24be8c44f705e80d14a73fa49feaabea"
+      },
+      "a.docx.md": {
+        "bytes": 34,
+        "sha256": "7158fc4b2a045e94fd8eb4590b9db6ab338b46f42fd165979c7c18d33601e2c0"
+      },
+      "a.epub.md": {
+        "bytes": 78,
+        "sha256": "0dafb552ea73cfaa5eff0fb4accc0b2680dda52e4dacc4e03e2a3435ac5aa3ff"
+      },
+      "a.html.md": {
+        "bytes": 57,
+        "sha256": "cd40b3f91c78c4eb946504110a8a4d4a39650815c718064190d714318d705d61"
+      },
+      "a.json.md": {
+        "bytes": 29,
+        "sha256": "5a2aff9693820969aa5dcfc37d7eb44d60a821302f6c2a104b49dd96e48c853f"
+      },
+      "a.pdf.md": {
+        "bytes": 21,
+        "sha256": "db3edbab2316407f31729c38e3ca0ff21dce70bc84179a0ff790f89b90bd5928"
+      },
+      "a.pptx.md": {
+        "bytes": 53,
+        "sha256": "08d1af8b6d07deb8d212882edd5f5928533c1990db902997c735b1ccd6ec0af5"
+      },
+      "a.txt.md": {
+        "bytes": 21,
+        "sha256": "773f7d371dc6065dc9426a49b5f2b2178eea8998db85b6b4797a4f2de1c7f221"
+      },
+      "a.xlsx.md": {
+        "bytes": 58,
+        "sha256": "ba9da8b2a5a76c64a72c62b5061dc8e15b3e71732f65a7d97adb8aac1cfd5d26"
+      },
+      "a.xml.md": {
+        "bytes": 35,
+        "sha256": "ad09c377d8554712f6fed6410128382a6eeb1f3236a089d3daf96de5b9d724cd"
+      }
+    },
+    "toolchain": "markitdown 0.1.8; pypdfium2 5.13.0"
+  },
   "media": {
     "outputs": {
       "audio-64k.mp3": {
@@ -105,5 +150,42 @@
       }
     },
     "toolchain": "pandoc 3.12; pdfTeX 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian)"
+  },
+  "render": {
+    "outputs": {
+      "memo.out.pdf.txt": {
+        "bytes": 75,
+        "sha256": "b225bbc5b4531c8b42958ce34af02dc59ca7be14a0fc570a60fb38ab5b6e2319"
+      },
+      "memo.page-001.png": {
+        "bytes": 34740,
+        "sha256": "58508a8c508505ed5cf88612e9a202b260610c4b6492fe08d9d12eff8ed398b7"
+      },
+      "memo.thumbnail.png": {
+        "bytes": 3489,
+        "sha256": "22b5c0bc71f984d0a181d9b0649b5ae30386dd2da4d867a433f5d2c817a99cea"
+      },
+      "pages.out.pdf.txt": {
+        "bytes": 50,
+        "sha256": "5d354740d71a9b67d199cd090af8ee294616c4763c1f346451284893b1480b8b"
+      },
+      "pages.page-001.png": {
+        "bytes": 18957,
+        "sha256": "a88d0c7dc4868c2b5c0cea207a579ee5a9932c7dd8f0483f606476a6ab7e3d14"
+      },
+      "pages.page-002.png": {
+        "bytes": 19317,
+        "sha256": "7d598296c65c34e33dc2be9e47043d52133af6dd9eddc1e7ff6ef30c613aa57b"
+      },
+      "pages.page-003.png": {
+        "bytes": 19626,
+        "sha256": "ff7d6c5fd06974011c5d28aea02b38e0444ea37b3c1c74ac90fc404add191db9"
+      },
+      "pages.thumbnail.png": {
+        "bytes": 2113,
+        "sha256": "232bea04f241d334258901727b4c98e39a52c5099ef68317cd86bd9cbe492b3b"
+      }
+    },
+    "toolchain": "playwright 1.63.0; pypdfium2 5.13.0"
   }
 }

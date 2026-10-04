@@ -4,7 +4,7 @@
 #   docker build -f Dockerfile.extract -t publishing-extract .
 #   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-extract report.pdf
 #
-# The `test` stage runs the extract tests (CI: with no network):
+# The `test` stage runs the extract tests and golden fixtures (CI: with no network):
 #
 #   docker build -f Dockerfile.extract --target test -t publishing-extract-test .
 #   docker run --rm --network none publishing-extract-test
@@ -51,7 +51,8 @@ COPY tests ./tests
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra extract --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_extract.py"]
+ENV GOLDEN_PROFILE=extract
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_extract.py", "tests/test_golden.py"]
 CMD []
 
 FROM extract
