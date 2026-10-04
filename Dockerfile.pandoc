@@ -66,7 +66,8 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra pandoc --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
 ENV PANDOC_TESTS=1
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_pandoc.py", "tests/test_pandoc_integration.py"]
+ENV GOLDEN_PROFILE=pandoc
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_golden.py", "tests/test_pandoc.py", "tests/test_pandoc_integration.py"]
 CMD []
 
 FROM pandoc

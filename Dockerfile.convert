@@ -56,7 +56,8 @@ RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra convert --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
 ENV OFFICE_PDF_TESTS=1
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_convert.py", "tests/test_convert_integration.py"]
+ENV GOLDEN_PROFILE=convert
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_golden.py", "tests/test_convert.py", "tests/test_convert_integration.py"]
 CMD []
 
 FROM convert

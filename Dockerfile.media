@@ -55,7 +55,8 @@ COPY tests ./tests
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra media --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_media.py"]
+ENV GOLDEN_PROFILE=media
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_golden.py", "tests/test_media.py"]
 CMD []
 
 FROM media
