@@ -76,8 +76,8 @@
         "sha256": "264dc2f5731f5d02fdba1edc8a2d13e34d84d12d4e0c1a8278b3752d169af11f"
       },
       "audio.opus": {
-        "bytes": 9566,
-        "sha256": "230b218c18f3edc3dd8b20ed2fb0d782194cc6a385b749d55e345c987b013569"
+        "bytes": 87,
+        "sha256": "198e339b77b9b9592fbbafbfa7a499c1c080b632748d78bf5b700335a7b30a5b"
       },
       "audio.wav": {
         "bytes": 90156,
@@ -108,8 +108,8 @@
         "sha256": "ab484bdabe8c9b844af3a5575523bea6160b7a5cb6f99c3326c0598743ef3967"
       },
       "video.webm": {
-        "bytes": 12502,
-        "sha256": "635e9b1970e1d9e8c85a5926aca12a665e13edbf65a50645af5e5d94d3210315"
+        "bytes": 179,
+        "sha256": "946d40dd8bae513f2d9fb00cbfb07f815263c3052c07e2fb86b9a1a9db1358fb"
       }
     },
     "toolchain": "ffmpeg version 5.1.9-0+deb12u1 Copyright (c) 2000-2026 the FFmpeg developers"

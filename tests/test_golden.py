@@ -9,7 +9,11 @@ Review it, then regenerate with GOLDEN_UPDATE=1 and commit the manifest with the
 The bytes belong to one toolchain, so a profile runs only in its own image (GOLDEN_PROFILE=media|pandoc|
 convert|extract|render, set by the Dockerfile test stages) and skips elsewhere; a missing tool there fails.
 
-The one documented tolerance is the render profile's PDF: Chromium stamps a fresh creation date and id on
+Two documented tolerances. media's `audio.opus` and `video.webm`: libopus and libvpx pick CPU-specific code
+paths, so their encoded bytes differ between machines (the same ffmpeg build gave other hashes on the CI
+runner than here, run after run stable on one machine). Those two compare an ffprobe summary of the streams
+(codec, rate, channels, size, pixel format, decoded frame count), not bytes; every other media output stays
+byte-identical. The other is the render profile's PDF: Chromium stamps a fresh creation date and id on
 every PDF, so its bytes differ run to run. The render goldens pin what is stable instead, byte for byte:
 every page image and the thumbnail (same source, same bytes), and a text file with the PDF's page count
 and extracted text.
@@ -52,6 +56,20 @@ def _render_file(name, member):
     return make
 
 
+def _stable_summary(make):
+    """Wrap a case whose encoder output depends on the CPU: replace its output with a text summary of what
+    ffprobe reports (codec, rate, channels, size, pixel format, decoded frame count) so the case compares those
+    and not the bytes. See the README, "Tolerance"."""
+    def run(o):
+        make(o)
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-count_frames", "-show_entries",
+             "stream=codec_type,codec_name,sample_rate,channels,width,height,pix_fmt,nb_read_frames",
+             "-of", "compact", str(o)], capture_output=True, text=True, check=True).stdout
+        o.write_text(out)
+    return run
+
+
 def _toolchain(profile):
     def first(*cmd):
         return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.splitlines()[0]
@@ -76,14 +94,14 @@ def _cases():
         "media": {
             "audio.mp3": lambda o: media.audio(a, o),
             "audio.m4a": lambda o: media.audio(a, o),
-            "audio.opus": lambda o: media.audio(a, o),
+            "audio.opus": _stable_summary(lambda o: media.audio(a, o)),
             "audio.ogg": lambda o: media.audio(a, o),
             "audio.flac": lambda o: media.audio(a, o),
             "audio.wav": lambda o: media.audio(a, o),
             "audio-64k.mp3": lambda o: media.audio(a, o, bitrate="64k"),
             "video.mp4": lambda o: media.video(a, o),
             "video-h32.mp4": lambda o: media.video(a, o, height=32, crf=30),
-            "video.webm": lambda o: media.video(a, o),
+            "video.webm": _stable_summary(lambda o: media.video(a, o)),
             "video.mkv": lambda o: media.video(a, o),
             "thumbnail.png": lambda o: media.thumbnail(a, o, at=0.5),
             "thumbnail-w32.jpg": lambda o: media.thumbnail(a, o, at=0.5, width=32),

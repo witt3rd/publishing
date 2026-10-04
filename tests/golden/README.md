@@ -1,7 +1,7 @@
 # Golden fixtures: media, pandoc, convert, extract, render
 
 `tests/test_golden.py` converts or renders the committed files in `inputs/` and compares each output's sha256 and size
-with `manifest.json`. **Tolerance: none.** The profiles are reproducible (ffmpeg `+bitexact`, one thread;
+with `manifest.json`. **Tolerance: none, with three documented exceptions (below).** The profiles are reproducible (ffmpeg `+bitexact`, one thread;
 pandoc/TeX with `SOURCE_DATE_EPOCH` and `FORCE_SOURCE_DATE`; office2pdf), so any changed byte is a real
 change: a profile bump (ffmpeg, pandoc, TeX Live, office2pdf, base image digest) or a flag change.
 
@@ -31,3 +31,13 @@ section of the manifest, and a bump of the shared base image digest or of `uv.lo
 `clip-a.mp4`/`clip-b.mp4` by ffmpeg lavfi (testsrc/testsrc2, 64x48, 1 s), `note.docx`/`note.odt` by pandoc
 from `note.md`, `minimal.docx` is the one in `test_convert_integration.py`.
 `inputs/extract/` was generated from `FIXTURES` in `test_extract.py` inside the extract test image.
+
+## Tolerance
+
+- **Media `audio.opus` and `video.webm`**: libopus and libvpx select CPU-specific (SIMD) code paths, so the
+  encoded bytes differ between machines (stable on one machine, different on the CI runner; the other
+  media outputs matched everywhere). These two cases compare an ffprobe summary (codec, sample rate,
+  channels, size, pixel format, decoded frame count), stored in the manifest as the hash of that text. Their
+  manifest `bytes` is the summary's length, not the media file's.
+- **Render PDFs**: see above (page images exact; PDF checked by page count and text).
+- Everything else is byte-identical. Do not widen the list without evidence of cross-machine drift.
