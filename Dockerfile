@@ -10,11 +10,13 @@
 # Debian bookworm's, fixed by the base digest's release and recorded in the image (`ffmpeg -version`).
 # render-html, render-md and pdf-pages (HTML, markdown and PDFs to a PDF, page images and a thumbnail,
 # user-content mode by default) use the same Chromium and pypdfium2: nothing more to install.
+# The `test` stage runs the render golden fixtures (tests/golden/README.md) in this image:
+#   docker build --target test -t publishing-test . && docker run --rm --network none publishing-test
 # Later converters join as further subcommands here. Dockerfile.convert is the slim Alpine image for
 # a service that only converts Office files.
 FROM ghcr.io/astral-sh/uv:0.12.22@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc AS uv
 
-FROM python:3.13-slim-bookworm@sha256:5024f48ba9441d4b13a95d3945abc6365538e3a31109833367a1923523c6efed
+FROM python:3.13-slim-bookworm@sha256:5024f48ba9441d4b13a95d3945abc6365538e3a31109833367a1923523c6efed AS publishing
 LABEL org.opencontainers.image.title="publishing" \
       org.opencontainers.image.description="House-style decks, memos, documents (PDF) and videos (MP4), rendered headless; HTML and markdown to PDF and page images; Office files to PDF" \
       org.opencontainers.image.source="https://github.com/witt3rd/publishing" \
@@ -45,3 +47,19 @@ RUN uv sync --locked --no-dev --extra video --extra convert --extra extract --no
 WORKDIR /work
 ENTRYPOINT ["publishing"]
 CMD ["--help"]
+
+# The render golden fixtures in the image they describe (trusted renders: no seccomp profile or netns needed).
+FROM publishing AS test
+USER root
+WORKDIR /opt/publishing/src
+COPY pyproject.toml uv.lock README.md LICENSE NOTICE ./
+COPY src ./src
+COPY tests ./tests
+RUN uv sync --locked --extra video --extra convert --extra extract --no-editable \
+    && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
+USER 65532:65532
+ENV GOLDEN_PROFILE=render
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_golden.py"]
+CMD []
+
+FROM publishing

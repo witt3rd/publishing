@@ -131,6 +131,14 @@ jobs:
           test "$(head -c 4 work/out.png | tail -c 3)" = "PNG"
           test -s work/out.mp3
 
+  render-golden:
+    name: render golden fixtures in the toolbox image, with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --target test -t publishing:golden .
+      - run: docker run --rm --network none publishing:golden
+
   image:
     name: the container image renders headless and reproduces its own bytes
     runs-on: ubuntu-latest
