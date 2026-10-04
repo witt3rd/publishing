@@ -1235,13 +1235,16 @@ wheels = [
 
 [[package]]
 name = "publishing"
-version = "0.8.0"
+version = "0.9.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
 extract = [
     { name = "markitdown", extra = ["docx", "pdf", "pptx", "xlsx"] },
     { name = "onnxruntime" },
+]
+images = [
+    { name = "pillow" },
 ]
 render = [
     { name = "markdown-it-py" },
@@ -1275,6 +1278,7 @@ requires-dist = [
     { name = "mdit-py-plugins", marker = "extra == 'render'", specifier = "==0.6.1" },
     { name = "nodejs-wheel-binaries", marker = "extra == 'video'", specifier = "==24.19.0" },
     { name = "onnxruntime", marker = "extra == 'extract'", specifier = "==1.30.0" },
+    { name = "pillow", marker = "extra == 'images'", specifier = "==12.3.0" },
     { name = "pillow", marker = "extra == 'render'", specifier = "==12.3.0" },
     { name = "playwright", marker = "extra == 'render'", specifier = "==1.63.0" },
     { name = "publishing", extras = ["render"], marker = "extra == 'video'" },
@@ -1282,7 +1286,7 @@ requires-dist = [
     { name = "pypdf", marker = "extra == 'render'", specifier = "==6.19.0" },
     { name = "pypdfium2", marker = "extra == 'render'", specifier = "==5.13.0" },
 ]
-provides-extras = ["render", "video", "convert", "media", "pandoc", "extract"]
+provides-extras = ["render", "video", "convert", "media", "images", "pandoc", "extract"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = "==9.1.1" }]

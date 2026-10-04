@@ -134,6 +134,23 @@ jobs:
           test "$(head -c 4 work/out.png | tail -c 3)" = "PNG"
           test -s work/out.mp3
 
+  images:
+    name: images profile in a container, with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.images --target test -t publishing-images:ci .
+      - run: docker run --rm --network none publishing-images:ci
+      - run: docker build -f Dockerfile.images -t publishing-images:run .
+      - name: the image resizes a file it is given, read-only, and nothing reaches the network
+        run: |
+          set -euo pipefail
+          mkdir -p work && chmod 777 work
+          docker run --rm --entrypoint python -v "$PWD/work:/work" publishing-images:run \
+            -c "from PIL import Image; Image.new('RGB', (300, 200), 'red').save('/work/in.jpg')"
+          docker run --rm --network none --read-only --tmpfs /tmp -v "$PWD/work:/work" publishing-images:run thumbnail in.jpg -o out.png --size 128
+          test "$(head -c 4 work/out.png | tail -c 3)" = "PNG"
+
   render-golden:
     name: render golden fixtures in the toolbox image, with no network
     runs-on: ubuntu-latest
