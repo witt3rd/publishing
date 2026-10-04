@@ -38,6 +38,32 @@ def test_document_contents_carry_page_numbers(repo, renderer):
     assert pdf.pages(s.pdf) == 3
 
 
+def test_document_numbering_and_contents_depth(repo, renderer):
+    folder = new(repo, "spec-v1", "document")
+    body = "## One\n\nText.\n\n### Sub\n\nx\n\n## Two {.newpage}\n\n### Sub\n\nMore.\n"
+    cfg = load(folder)
+    s = resolve(folder, cfg)
+
+    def words(front):
+        (folder / "document.md").write_text(f"---\ntitle: Spec\n{front}---\n{body}")
+        build(s, cfg, renderer)
+        return pdf.text(s.pdf)
+
+    w = words("numbered: true\n")
+    assert "1 One" in w and "2.1 Sub" in w and "2 Two" in w
+    assert "2.1 Sub" in w.split("1 One")[1] and "2.1 Sub" not in w.split("1 One")[0]
+    w = words("numbered: true\ntoc: 1\n")
+    assert "1 One 2 2 Two 3" in w and w.count("Sub") == 2  # the contents list the sections only
+    w = words("toc: false\n")
+    assert "Contents" not in w and "1 One" not in w
+    (folder / "document.md").write_text(f"---\ntitle: Spec\ntoc: 9\n---\n{body}")
+    with pytest.raises(BuildError, match="toc"):
+        build(s, cfg, renderer)
+    (folder / "document.md").write_text(f"---\ntitle: Spec\nnumbered: maybe\n---\n{body}")
+    with pytest.raises(BuildError, match="numbered"):
+        build(s, cfg, renderer)
+
+
 def test_check_finds_stale_missing_and_orphan(repo, renderer):
     folder = new(repo, "memo-v1", "memo")
     cfg = load(folder)

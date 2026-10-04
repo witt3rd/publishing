@@ -18,26 +18,26 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.7.0'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.8.0'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.8.0'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.8.0'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 
 # pandoc: markdown, html, docx and odt to pdf, docx and html (the standard library and pandoc; PDFs also need TeX)
-uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.8.0'
 publishing setup --pandoc           # the pinned pandoc, checksummed, into the user cache
 
 # extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
-uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.8.0'
 
 # media: audio and video through ffmpeg (the standard library only; ffmpeg on the PATH, or use the media image)
-uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.8.0'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -79,10 +79,12 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   `video.html` (see Video). A folder with `source.txt` marks a PDF built elsewhere. Memos and documents
   are markdown with flat front matter (`title`, `subtitle`, `kicker`, `meta`, `footer`, `paper`), fenced
   divs (`::: summary`, `::: q`), heading attributes (`{#id .newpage}`), pipe tables with a `: caption`
-  line, figures, footnotes and highlighted code.
+  line, figures, footnotes and highlighted code. A document's front matter also takes `numbered: true`
+  (sections numbered 1, 1.1, 1.1.1 in the headings and the contents) and `toc: 1|2|3|false` (how many
+  heading levels the contents list; 2 by default, `false` for none).
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.7.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.8.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -93,7 +95,29 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   A build that would change nothing but the bytes leaves the committed file untouched.
 - **Check** compares words and page count for a PDF, not bytes (Chromium's PDF bytes differ run to run);
   for an MP4 see Video.
-- **CI.** Copy `ci/reports.yml` into `.github/workflows/`.
+- **CI.** A repo proves its committed PDFs and MP4s rebuild from source with the GitHub Action in this
+  repo. Put `docs/report.toml` (`publishing = "0.8.0"`, `project = "..."`) and this in
+  `.github/workflows/reports.yml` (the same file is `ci/reports.yml`):
+
+  ```yaml
+  name: reports rebuild from source
+  on: { pull_request: { paths: ['docs/**'] }, workflow_dispatch: {} }
+  permissions: { contents: read }
+  jobs:
+    check:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v7
+        - uses: witt3rd/publishing@v0.8.0   # with: { config: path/to/report.toml } if it is elsewhere
+  ```
+
+  The action installs uv, reads the `publishing` pin from report.toml, runs `publishing check` through `uvx`
+  at that tag (the video extra, HyperFrames and ffmpeg when a `video.html` exists, else the render extra),
+  and fails on a missing, stale or orphan file. The `@v0.8.0` on `uses:` only selects `ci/check.sh`; the
+  version that builds is the pin, so bump the pin and commit the rebuilt files together. Add
+  `with: { lfs: true }` to checkout if the files are in LFS. Run it by hand with `ci/check.sh [CONFIG]`
+  (`PUBLISHING_DEPS=0` off Debian, `PUBLISHING_FROM=<path or git+url>` to test an unreleased tree);
+  `tools/action-check.sh` proves it on a scratch repo, and this repo's CI runs that.
 - **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright,
   HyperFrames) is a minor bump; a repo adopts it by bumping its pin and running `publishing check`.
 
@@ -180,11 +204,11 @@ spreadsheet to docx, `.txt`) is exit 2.
   file is a converter.
 - **The call.** `office2pdf SRC -o OUT` into the temporary folder, moved into place when it succeeds.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.7.0 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.8.0 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.7.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.8.0' && publishing setup --convert --bin-dir /usr/local/bin`.
 
 ### Any to any (pandoc)
 
@@ -252,7 +276,7 @@ spreadsheet to docx, `.txt`) is exit 2.
   (markitdown has no RTF reader; Outlook needs another dependency): exit 2.
 - **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
 - **Containers.** The toolbox image carries the extract extra:
-  `docker run … publishing:0.7.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  `docker run … publishing:0.8.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
   extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
   CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
@@ -345,10 +369,10 @@ the command's). They are the headless render entry for services (the render prof
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.7.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.7.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.7.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.7.0 \
+docker build -t publishing:0.8.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.8.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.8.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.8.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 

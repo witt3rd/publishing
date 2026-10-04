@@ -3,6 +3,8 @@ title: The house document
 subtitle: Long-form writing with a cover, contents, running header and page numbers
 kicker: Publishing · the house document
 footer: house-style-document-v1
+numbered: true
+toc: 2
 ---
 
 ## Purpose
@@ -54,6 +56,10 @@ TITLE, S = d.TITLE, d.S
 publishing build docs/spire.md --output docs/Spire.pdf --format document
 publishing check
 ```
+
+## Long-document options
+
+Two front-matter keys shape a long document. `numbered: true` numbers the sections 1, 1.1, 1.1.1 in the headings and the contents alike; only top-level headings count, so the heading of a summary box stays plain. `toc: 1`, `2` (the default) or `3` sets how many heading levels the contents list, and `toc: false` leaves the contents out. This sample sets both.
 
 ## Page furniture
 

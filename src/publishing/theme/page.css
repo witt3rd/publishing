@@ -132,3 +132,33 @@ main .cover :is(h1, .title) { font: 700 24pt/1.12 var(--sans); margin: 6pt 0 0 0
 .hl .nb, .hl .bp, .hl .nt, .hl .na { color: #8a3f8f; }
 .hl .gd { color: var(--red); } .hl .gi { color: var(--hit); } .hl .gh, .hl .gu { color: var(--accent); font-weight: 700; }
 .hl .err { color: var(--red); }
+
+/* Long-document polish. */
+nav.toc li { break-inside: avoid; }
+blockquote, dd, dt, li > pre { break-inside: avoid; }
+dt { break-after: avoid; }
+h1, h2, h3, h4, h5, h6, figcaption { orphans: 3; widows: 3; }
+.titleblock h1, h1.title { text-wrap: balance; }
+
+/* Numbered sections (front matter `numbered: true`): 1, 1.1, 1.1.1 in the headings and the contents.
+   Only top-level headings count, so the headings of a summary box or a question card stay plain. */
+body.numbered main { counter-reset: n1 n2 n3; }
+body.numbered main > h1,
+body.numbered main.h2top > h2 { counter-increment: n1; counter-set: n2 0 n3 0; }
+body.numbered main:not(.h2top) > h2,
+body.numbered main.h2top > h3 { counter-increment: n2; counter-set: n3 0; }
+body.numbered main:not(.h2top) > h3,
+body.numbered main.h2top > h4 { counter-increment: n3; }
+body.numbered main > h1::before,
+body.numbered main.h2top > h2::before { content: counter(n1) "\2002"; color: var(--accent); }
+body.numbered main:not(.h2top) > h2::before,
+body.numbered main.h2top > h3::before { content: counter(n1) "." counter(n2) "\2002"; color: var(--accent); }
+body.numbered main:not(.h2top) > h3::before,
+body.numbered main.h2top > h4::before { content: counter(n1) "." counter(n2) "." counter(n3) "\2002"; color: var(--accent); }
+body.numbered nav.toc { counter-reset: n1 n2 n3; }
+body.numbered nav.toc li.l1 { counter-increment: n1; counter-set: n2 0 n3 0; }
+body.numbered nav.toc li.l2 { counter-increment: n2; counter-set: n3 0; }
+body.numbered nav.toc li.l3 { counter-increment: n3; }
+body.numbered nav.toc li.l1 .t::before { content: counter(n1) "\2002"; color: var(--accent); }
+body.numbered nav.toc li.l2 .t::before { content: counter(n1) "." counter(n2) "\2002"; }
+body.numbered nav.toc li.l3 .t::before { content: counter(n1) "." counter(n2) "." counter(n3) "\2002"; }
