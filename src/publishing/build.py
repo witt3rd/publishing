@@ -150,8 +150,9 @@ def deck_html(pages: list[str], base: Path, title: str) -> str:
 
 def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None, r=Renderer) -> str:
     md_path = s.src if s.src.suffix == ".md" else s.src / f"{s.kind}.md"
-    page = markdown.parse(md_path.read_text())
-    meta = page.meta
+    meta = markdown.front_matter(md_path.read_text())[0]
+    toc_depth = _toc_depth(meta, md_path)
+    page = markdown.parse(md_path.read_text(), toc_levels=max(toc_depth, 1))
     kicker = htmlmod.escape(meta.get("kicker", cfg.project or ""))
     meta_line = htmlmod.escape(meta.get("meta", " · ".join(v for v in (meta.get("author", ""), meta.get("date", ""))
                                                            if v)))
@@ -164,7 +165,7 @@ def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None, r=Render
                  + (f'<p class="subtitle">{page.subtitle}</p>' if page.subtitle else "")
                  + (f'<p class="meta">{meta_line}</p>' if meta_line else "") + "</header>")
     toc = ""
-    if s.kind == "document" and page.headings:
+    if s.kind == "document" and page.headings and toc_depth:
         rows = []
         for level, ident, text in page.headings:
             n = (pages_by_id or {}).get(ident, "")
@@ -177,12 +178,31 @@ def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None, r=Render
              " @page :first { @top-left { content: none; } @top-right { content: none; } }")
     body = _inline_svgs(page.body, md_path.parent, confine=r.untrusted)
     main_cls = ' class="h2top"' if page.top == 2 else ""
+    numbered = _flag(meta, "numbered", md_path) and s.kind == "document"
+    body_cls = " numbered" if numbered else ""
     front = f'<section class="front">{block}{toc}</section>' if s.kind == "document" else block
     return (f'<!doctype html><html lang="{htmlmod.escape(meta.get("lang", "en"))}"><head><meta charset="utf-8">'
             f"<title>{htmlmod.escape(re.sub(r'<[^>]+>', '', title_txt))}</title>"
             f'<base href="{r.url(md_path.parent).rstrip("/")}/">'
             f'<link rel="stylesheet" href="{r.url(theme() / "page.css")}"><style>{style}</style></head>'
-            f'<body class="{s.kind}">{front}<main{main_cls}>{body}</main></body></html>')
+            f'<body class="{s.kind}{body_cls}">{front}<main{main_cls}>{body}</main></body></html>')
+
+
+def _flag(meta: dict, key: str, md_path: Path) -> bool:
+    v = meta.get(key, "false").strip().lower()
+    if v not in ("true", "false", "yes", "no"):
+        raise BuildError(f"{md_path.name}: front matter `{key}` must be true or false, not {meta[key]!r}")
+    return v in ("true", "yes")
+
+
+def _toc_depth(meta: dict, md_path: Path) -> int:
+    """Front matter `toc`: how many heading levels the contents list (1-3, default 2); false leaves it out."""
+    v = meta.get("toc", "2").strip().lower()
+    if v in ("false", "no", "none", "0"):
+        return 0
+    if v not in ("1", "2", "3"):
+        raise BuildError(f"{md_path.name}: front matter `toc` must be 1, 2, 3 or false, not {meta['toc']!r}")
+    return int(v)
 
 
 def _inline_svgs(body: str, base: Path, confine: bool = False) -> str:

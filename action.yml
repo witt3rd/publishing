@@ -1,0 +1,12 @@
+name: publishing check
+description: Fail unless every committed PDF and MP4 under docs/ rebuilds from its source with the publishing version docs/report.toml pins.
+inputs:
+  config:
+    description: Path to the repo's report.toml
+    default: docs/report.toml
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v10.2.0
+    - run: ${{ github.action_path }}/ci/check.sh "${{ inputs.config }}"
+      shell: bash

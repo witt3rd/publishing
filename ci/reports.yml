@@ -1,5 +1,6 @@
 # Copy to .github/workflows/reports.yml in a repo that builds reports with publishing.
 # It rebuilds every PDF and MP4 under docs/ with the version docs/report.toml pins, and fails on a difference.
+# The action only runs ci/check.sh at that ref; the tool version that builds is the pin in docs/report.toml.
 name: reports rebuild from source
 on: { pull_request: { paths: ['docs/**'] }, workflow_dispatch: {} }
 permissions: { contents: read }
@@ -8,15 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7          # add `with: { lfs: true }` if the PDFs or MP4s are in LFS
-      - uses: astral-sh/setup-uv@v10.2.0
-      - run: |
-          V=$(sed -n 's/^publishing *= *"\(.*\)"/\1/p' docs/report.toml)
-          if find docs -name video.html | grep -q .; then   # videos: the video extra, HyperFrames and ffmpeg
-            sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-            P="uvx --from publishing[video]@git+https://github.com/witt3rd/publishing@v$V publishing"
-            $P setup --with-deps --video
-          else
-            P="uvx --from publishing[render]@git+https://github.com/witt3rd/publishing@v$V publishing"
-            $P setup --with-deps
-          fi
-          $P check
+      - uses: witt3rd/publishing@v0.8.0    # `with: { config: path/to/report.toml }` for a non-default place

@@ -24,6 +24,15 @@ jobs:
       - run: uv run pytest -q
       - run: uv run publishing check
 
+  action:
+    name: the GitHub Action checks a scratch repo (passes, then fails on a stale PDF)
+    runs-on: ubuntu-latest
+    env: { PUBLISHING_FROM: "${{ github.workspace }}" }   # this checkout, not the pinned tag (0.8.0 is not tagged yet)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: tools/action-check.sh
+
   user-content-container:
     name: user-content mode in a locked-down container
     runs-on: ubuntu-latest
