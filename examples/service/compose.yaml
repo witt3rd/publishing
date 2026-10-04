@@ -1,0 +1,38 @@
+# The same capabilities as long-lived-image services. Build the images first (docs/service.md):
+#   docker build -t publishing:0.8.0 ../..
+#   docker build -f ../../Dockerfile.convert -t publishing-convert:0.8.0 ../..
+#   docker compose run --rm convert sample/hello.docx      # profile images: arguments only
+#   docker compose run --rm toolbox extract sample/hello.html
+x-locked: &locked
+  network_mode: none
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  user: "${UID:-1000}:${GID:-1000}"
+  working_dir: /work
+  volumes: ["./:/work"]
+  mem_limit: 2g
+  pids_limit: 512
+services:
+  # The toolbox (Debian): every command. First argument is the subcommand.
+  toolbox:
+    <<: *locked
+    image: publishing:0.8.0
+  # Render commands (Chromium) additionally need the seccomp profile and user-content mode.
+  render:
+    <<: *locked
+    image: publishing:0.8.0
+    security_opt: ["no-new-privileges:true", "seccomp=../../ci/seccomp-chromium.json"]
+    environment: { PUBLISHING_USER_CONTENT: "1" }
+  # Alpine profile (musl): `publishing convert` only, Office to PDF. Arguments only, no subcommand.
+  convert:
+    <<: *locked
+    image: publishing-convert:0.8.0
+  # Debian profiles with one entrypoint each: extract, media, pandoc.
+  extract:
+    <<: *locked
+    image: publishing-extract:0.8.0
+  media:
+    <<: *locked
+    image: publishing-media:0.8.0
