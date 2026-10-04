@@ -1,5 +1,5 @@
 """publishing new | build | check | publish | setup | compare | html | render-html | render-md | pdf-pages
-| convert | extract | media
+| convert (office2pdf, pandoc) | extract | media
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -18,7 +18,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert, extract, media, renderhtml
+from . import __version__, convert, extract, media, pandoc, renderhtml
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -175,6 +175,10 @@ def _no_render(what: str):
 def cmd_setup(a) -> int:
     if a.convert:
         code = convert.setup(a.bin_dir)
+        if code or not (a.render or a.pandoc):
+            return code
+    if a.pandoc:
+        code = pandoc.setup(a.bin_dir)
         if code or not a.render:
             return code
     if NO_RENDER:
@@ -308,7 +312,8 @@ def main(argv=None) -> int:
     p.add_argument("--with-deps", action="store_true", help="also Chromium's OS libraries (CI; needs sudo)")
     p.add_argument("--video", action="store_true", help="also the pinned HyperFrames, for videos (the video extra)")
     p.add_argument("--convert", action="store_true", help=f"the pinned office2pdf {convert.VERSION}, checksummed")
-    p.add_argument("--bin-dir", metavar="DIR", help="install office2pdf as DIR/office2pdf (default: the user cache)")
+    p.add_argument("--pandoc", action="store_true", help=f"the pinned pandoc {pandoc.VERSION}, checksummed")
+    p.add_argument("--bin-dir", metavar="DIR", help="install office2pdf and pandoc as DIR/office2pdf, DIR/pandoc (default: the user cache)")
     p.set_defaults(fn=cmd_setup, needs_render=False)
 
     p = sub.add_parser("compare", help="a deck of two PDFs' pages side by side (before/after)")
@@ -347,9 +352,11 @@ def main(argv=None) -> int:
                            "README \"Render\".")
         renderhtml.add_arguments(p, what)
 
-    p = sub.add_parser("convert", help="an Office file (.docx, .xlsx, .pptx) to a PDF, through office2pdf",
-                       description="Exit codes: 0 converted (stdout: the PDF's path); 1 the conversion failed; "
-                       "2 usage; 3 no converter (OFFICE2PDF_BIN, or `publishing setup --convert`).")
+    p = sub.add_parser("convert", help="a document to a PDF, docx or html: Office files through office2pdf, "
+                       "markdown, html, docx and odt through pandoc",
+                       description="Exit codes: 0 converted (stdout: the output's path); 1 the conversion failed; "
+                       "2 usage; 3 no converter (OFFICE2PDF_BIN or `publishing setup --convert`; PANDOC_BIN or "
+                       "`publishing setup --pandoc`).")
     convert.add_arguments(p)
 
     p = sub.add_parser("extract", help="a document (pdf, docx, pptx, xlsx, html, csv, json, xml, epub) to markdown, through markitdown",
@@ -364,7 +371,7 @@ def main(argv=None) -> int:
 
     a = ap.parse_args(argv)
     if a.cmd == "setup":
-        a.render = a.render or a.video or not a.convert
+        a.render = a.render or a.video or not (a.convert or a.pandoc)
     if NO_RENDER and getattr(a, "needs_render", True):
         _no_render(a.cmd)
     try:

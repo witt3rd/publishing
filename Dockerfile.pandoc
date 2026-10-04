@@ -1,0 +1,72 @@
+# The pandoc profile on Debian bookworm (glibc): `publishing convert` with the pinned pandoc and a slim
+# TeX Live, for markdown, html, docx and odt to pdf, docx and html. No Playwright, no Chromium. The
+# contract is README "Convert".
+#
+#   docker build -f Dockerfile.pandoc -t publishing-pandoc .
+#   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-pandoc notes.md
+#   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-pandoc report.docx --to html
+#
+# The `test` stage runs the pandoc tests, the real conversions (PDFs included) among them (CI: no network):
+#
+#   docker build -f Dockerfile.pandoc --target test -t publishing-pandoc-test .
+#   docker run --rm --network none publishing-pandoc-test
+#
+# Pinned: the base images by digest, the Python tool by uv.lock, pandoc by version and sha256 in
+# src/publishing/pandoc.py (`publishing setup --pandoc` checks the archive and the binary). TeX Live is
+# Debian bookworm's (texlive-latex-base, -recommended, texlive-fonts-recommended, lmodern), fixed by the
+# base digest's release and recorded in the image (`pdflatex --version`). Outputs are reproducible:
+# SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE fix every date and the PDF's trailer id.
+# In an existing glibc image (python3, a TeX install) the same two steps are:
+#   uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+#   publishing setup --pandoc --bin-dir /usr/local/bin
+FROM ghcr.io/astral-sh/uv:0.12.22@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc AS uv
+
+FROM python:3.13-slim-bookworm@sha256:5024f48ba9441d4b13a95d3945abc6365538e3a31109833367a1923523c6efed AS pandoc
+LABEL org.opencontainers.image.title="publishing-pandoc" \
+      org.opencontainers.image.description="markdown, html, docx and odt to pdf, docx and html: publishing's pandoc profile" \
+      org.opencontainers.image.source="https://github.com/witt3rd/publishing" \
+      org.opencontainers.image.licenses="MIT"
+
+ENV UV_PYTHON_DOWNLOADS=never UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/publishing/venv \
+    PATH=/opt/publishing/venv/bin:$PATH \
+    PANDOC_BIN=/usr/local/bin/pandoc \
+    HOME=/tmp
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended \
+       texlive-fonts-recommended lmodern \
+    && rm -rf /var/lib/apt/lists/*
+
+# uv is mounted for the build only; the installed wheel does not need its source tree.
+WORKDIR /opt/publishing/src
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src ./src
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --no-dev --extra pandoc --no-editable \
+    && publishing setup --pandoc --bin-dir /usr/local/bin \
+    && ! python -c "import playwright" 2>/dev/null \
+    && rm -rf /opt/publishing/src /tmp/* /root/.cache \
+    && chmod -R a+rX /opt/publishing \
+    && publishing --version && pandoc --version | head -1 && pdflatex --version | head -1
+
+WORKDIR /work
+USER 65532:65532
+ENTRYPOINT ["publishing", "convert"]
+CMD ["--help"]
+
+# The pandoc tests in the image they describe: the stand-in tests and the real conversions.
+FROM pandoc AS test
+USER root
+WORKDIR /opt/publishing/src
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src ./src
+COPY tests ./tests
+RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
+    uv sync --locked --extra pandoc --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
+USER 65532:65532
+ENV PANDOC_TESTS=1
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_pandoc.py", "tests/test_pandoc_integration.py"]
+CMD []
+
+FROM pandoc
