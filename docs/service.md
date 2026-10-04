@@ -41,6 +41,7 @@ Rebuilding is only repeatable per ref, so record the ref in the image tag and ne
 | `publishing-extract` (`Dockerfile.extract`) | Debian slim | `publishing extract` | markitdown | documents → markdown only |
 | `publishing-media` (`Dockerfile.media`) | Debian slim | `publishing media` | ffmpeg 5.1 | audio/video transcode, thumbnail, concat |
 | `publishing-images` (`Dockerfile.images`) | Debian slim | `publishing images` | Pillow (pinned wheels) | image resize, convert, thumbnail, metadata strip |
+| `publishing-pdf` (`Dockerfile.pdf`) | Debian slim | `publishing pdf` | pypdf (pure Python) | PDF merge, page selection, metadata and active-content strip |
 
 **Alpine vs Debian.** Alpine only for the convert profile: office2pdf ships a musl build for `x86_64`
 only (no `aarch64` musl), and the profile needs no Python wheels. Everything else is Debian (glibc):
@@ -65,7 +66,7 @@ One CLI, one subcommand per capability; `publishing --help` lists them and each 
 flags and limits. Conventions that hold across them:
 
 - A capability runs in the toolbox image unless a profile image carries it (section 2). Video and the
-  house `build`/`check` run only there; pandoc (any-to-any), media and images run only in their profile images.
+  house `build`/`check` run only there; pandoc (any-to-any), media, images and pdf run only in their profile images.
 - Stdout is the output path (or one JSON line with `--json`); render commands print each file written.
 - A person's content goes through the user-content commands (section 4), never `build --trusted`.
 
@@ -106,7 +107,7 @@ docker run --rm --user 65532:65532 --cap-drop ALL --security-opt no-new-privileg
 
 `ci/seccomp-chromium.json` is Docker's default profile plus one rule; take it from your pinned ref.
 Why each flag, and the residual risks: [user-content.md](user-content.md) "Containers". `convert`,
-`extract`, `media` and `images` need none of the seccomp profile; give them `--network none`, `--read-only`,
+`extract`, `media`, `images` and `pdf` need none of the seccomp profile; give them `--network none`, `--read-only`,
 `--tmpfs /tmp`, non-root and the resource caps.
 
 ## 5. The example kit

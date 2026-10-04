@@ -18,29 +18,32 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.9.0'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.10.0'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 
 # pandoc: markdown, html, docx and odt to pdf, docx and html (the standard library and pandoc; PDFs also need TeX)
-uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 publishing setup --pandoc           # the pinned pandoc, checksummed, into the user cache
 
 # extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
-uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 
 # media: audio and video through ffmpeg (the standard library only; ffmpeg on the PATH, or use the media image)
-uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 
 # images: resize, convert, thumbnails and metadata strip through Pillow (exact pin; no Playwright, no Chromium)
-uv tool install 'publishing[images] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+uv tool install 'publishing[images] @ git+https://github.com/witt3rd/publishing@v0.10.0'
+
+# pdf: merge, select pages and strip PDFs through pypdf (exact pin; no Playwright, no Chromium)
+uv tool install 'publishing[pdf] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -64,6 +67,7 @@ publishing convert notes.md -o notes.docx       # markdown, html, docx or odt to
 publishing extract report.pdf [-o report.md]    # a document to markdown (the extract profile; see Extract)
 publishing media audio|video|thumbnail|concat ...   # ffmpeg transcodes, frames, joins (the media profile; see Media)
 publishing images resize|convert|thumbnail|strip ...   # resize, re-encode, thumbnails, metadata strip (the images profile; see Images)
+publishing pdf merge|pages|strip ...   # join PDFs, keep pages, drop metadata and active content (the pdf profile; see PDF tools)
 ```
 
 **User content.** Anything made from a person's content renders in user-content mode: Chromium's
@@ -88,7 +92,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   heading levels the contents list; 2 by default, `false` for none).
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.9.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.10.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -100,7 +104,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
 - **Check** compares words and page count for a PDF, not bytes (Chromium's PDF bytes differ run to run);
   for an MP4 see Video.
 - **CI.** A repo proves its committed PDFs and MP4s rebuild from source with the GitHub Action in this
-  repo. Put `docs/report.toml` (`publishing = "0.9.0"`, `project = "..."`) and this in
+  repo. Put `docs/report.toml` (`publishing = "0.10.0"`, `project = "..."`) and this in
   `.github/workflows/reports.yml` (the same file is `ci/reports.yml`):
 
   ```yaml
@@ -112,12 +116,12 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v7
-        - uses: witt3rd/publishing@v0.9.0   # with: { config: path/to/report.toml } if it is elsewhere
+        - uses: witt3rd/publishing@v0.10.0   # with: { config: path/to/report.toml } if it is elsewhere
   ```
 
   The action installs uv, reads the `publishing` pin from report.toml, runs `publishing check` through `uvx`
   at that tag (the video extra, HyperFrames and ffmpeg when a `video.html` exists, else the render extra),
-  and fails on a missing, stale or orphan file. The `@v0.9.0` on `uses:` only selects `ci/check.sh`; the
+  and fails on a missing, stale or orphan file. The `@v0.10.0` on `uses:` only selects `ci/check.sh`; the
   version that builds is the pin, so bump the pin and commit the rebuilt files together. Add
   `with: { lfs: true }` to checkout if the files are in LFS. Run it by hand with `ci/check.sh [CONFIG]`
   (`PUBLISHING_DEPS=0` off Debian, `PUBLISHING_FROM=<path or git+url>` to test an unreleased tree);
@@ -208,11 +212,11 @@ spreadsheet to docx, `.txt`) is exit 2.
   file is a converter.
 - **The call.** `office2pdf SRC -o OUT` into the temporary folder, moved into place when it succeeds.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.9.0 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.10.0 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.9.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.10.0' && publishing setup --convert --bin-dir /usr/local/bin`.
 
 ### Any to any (pandoc)
 
@@ -280,7 +284,7 @@ spreadsheet to docx, `.txt`) is exit 2.
   (markitdown has no RTF reader; Outlook needs another dependency): exit 2.
 - **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
 - **Containers.** The toolbox image carries the extract extra:
-  `docker run … publishing:0.9.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  `docker run … publishing:0.10.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
   extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
   CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
@@ -357,6 +361,39 @@ subcommand takes `--timeout SECONDS` (default 60), `--max-pixels N` (default 50 
 - **Exit codes.** 0 done; 1 unreadable image or a limit was hit; 2 usage (unsupported type, no such
   source, the output exists, a side out of range); 3 Pillow is not installed.
 
+## PDF tools
+
+`publishing pdf merge|pages|strip`, or from Python `publishing.pdftools.merge / pages / strip` (they raise a
+`PdfError` subclass whose `exit_code` is the command's). One subcommand per capability, each with its own
+tests (`tests/test_pdftools.py`).
+
+```sh
+publishing pdf merge a.pdf b.pdf [c.pdf ...] -o all.pdf      # every page of each, in the order given
+publishing pdf pages in.pdf --select 1-3,5,7- -o part.pdf    # 1-based ranges, kept in the order given
+publishing pdf strip in.pdf -o clean.pdf                     # every page, no metadata or active content
+```
+
+Every subcommand takes `--timeout SECONDS` (default 60), `--max-input-bytes N` (default 128 MiB, per input),
+`--max-pages N` (default 2000, of output) and `--max-bytes N` (default 256 MiB, of output).
+
+- **In.** Local `.pdf` files only, by path; a URL, a device or a pipe is refused (exit 2). A file that is not
+  a PDF, is damaged or is encrypted is refused (exit 1; nothing is decrypted). At most 100 inputs.
+- **Out.** One `.pdf`, built in a temporary folder beside it and linked into place: an existing `OUT` is
+  never overwritten (exit 2) and a failure or a limit leaves no `OUT`. Its path is the only line on stdout.
+- **Clean.** An output holds the chosen pages and nothing else of its sources: no document info or XMP, no
+  outline, named destinations, form, attached files, JavaScript or page-level metadata. Annotations that
+  could run or fetch something (JavaScript, launch, form-submit and remote-go-to actions, widgets, file
+  attachments, screens, movies, sound, 3D, rich media) are dropped; plain links stay. A form is therefore not
+  kept (its fields are not flattened). The one `/Producer` is `publishing`.
+- **Deterministic.** The same pypdf build gives the same bytes for the same input (tested).
+- **Limits.** The work runs in a child process that is killed at the time cap.
+- **Image.** `Dockerfile.pdf`: the base images by digest, pypdf from the lockfile, the `pdf` extra, no
+  Playwright, no Chromium, no PDFium, non-root.
+  `docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-pdf merge a.pdf b.pdf -o all.pdf`.
+  CI runs the tests in its `test` stage with `--network none`.
+- **Exit codes.** 0 done; 1 unreadable PDF or a limit was hit; 2 usage (unsupported type, no such source, the
+  output exists, a bad page range, fewer than two PDFs to merge); 3 pypdf is not installed.
+
 ## Render
 
 `publishing render-html SRC [--pdf OUT] [--png OUTDIR] [--thumbnail W]`, its siblings
@@ -413,10 +450,10 @@ Adopting this as a service from another repo (image, entry points, pinning, Alpi
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.9.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.9.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.9.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.9.0 \
+docker build -t publishing:0.10.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.10.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.10.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.10.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 
