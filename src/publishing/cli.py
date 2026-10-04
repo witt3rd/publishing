@@ -1,5 +1,5 @@
 """publishing new | build | check | publish | setup | compare | html | render-html | render-md | pdf-pages
-| convert (office2pdf, pandoc) | extract | media | a11y
+| convert (office2pdf, pandoc) | extract | media | a11y | images
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -18,7 +18,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert, extract, media, pandoc, renderhtml
+from . import __version__, convert, extract, images, media, pandoc, renderhtml
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -397,6 +397,11 @@ def main(argv=None) -> int:
                        description="Exit codes: 0 done (stdout: the output's path); 1 ffmpeg failed or a limit "
                        "(time, size, input length) was hit; 2 usage; 3 ffmpeg is not installed. No network.")
     media.add_arguments(p)
+
+    p = sub.add_parser("images", help="images through Pillow: resize, convert, thumbnail, strip",
+                       description="Exit codes: 0 done (stdout: the output's path); 1 the image was unreadable or a "
+                       "limit (time, pixels, bytes) was hit; 2 usage; 3 Pillow is not installed. No network.")
+    images.add_arguments(p)
 
     a = ap.parse_args(argv)
     if a.cmd == "setup":

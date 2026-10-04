@@ -1,6 +1,6 @@
 [project]
 name = "publishing"
-version = "0.8.0"
+version = "0.9.0"
 description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, documents to PDF, docx and html"
 readme = "README.md"
 license = "MIT"
@@ -31,6 +31,9 @@ convert = []
 # ffmpeg transcodes, thumbnails and concatenation: the standard library only. ffmpeg and ffprobe come from the
 # host or, pinned, from the media image (Dockerfile.media; README "Media").
 media = []
+# Image resize, convert, thumbnails and metadata strip through Pillow (exact pin, the one `render` pins): no
+# Playwright, no Chromium, no ffmpeg (README "Images").
+images = ["pillow==12.3.0"]
 # The pandoc engine of `convert`: markdown, html, docx and odt to pdf, docx and html through the pandoc binary
 # that `publishing setup --pandoc` installs (pinned in src/publishing/pandoc.py); a PDF also needs a TeX
 # install (Dockerfile.pandoc). The standard library only, like convert.
