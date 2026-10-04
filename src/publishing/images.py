@@ -27,6 +27,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from ._shared import local_dest, local_source, positive
+
 OUTPUT_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp")
 INPUT_SUFFIXES = OUTPUT_SUFFIXES + (".gif", ".bmp", ".tif", ".tiff")
 FORMATS = ["PNG", "JPEG", "WEBP", "GIF", "BMP", "TIFF"]  # decoders Pillow may use, by content
@@ -62,22 +64,11 @@ def _pil():
 
 
 def _source(src) -> Path:
-    text = str(src)
-    path = Path(text)
-    if "://" in text or text.startswith(("-", "pipe:", "/dev/")) or path.suffix.lower() not in INPUT_SUFFIXES:
-        raise UsageError(f"{text}: not a supported local image ({', '.join(INPUT_SUFFIXES)})")
-    if not path.is_file():
-        raise UsageError(f"{text}: no such file")
-    return path.resolve()
+    return local_source(src, INPUT_SUFFIXES, "image", UsageError)
 
 
 def _dest(out) -> Path:
-    path = Path(out)
-    if path.suffix.lower() not in OUTPUT_SUFFIXES:
-        raise UsageError(f"{path}: output must be one of {', '.join(OUTPUT_SUFFIXES)}")
-    if path.exists():
-        raise UsageError(f"{path} exists; never overwrite")
-    return path
+    return local_dest(out, OUTPUT_SUFFIXES, UsageError)
 
 
 def _side(name, value):
@@ -223,28 +214,16 @@ def strip(src, dest, **limits) -> Path:
 
 # --- the command ------------------------------------------------------------------------------
 
-def _positive(kind):
-    def parse(text):
-        try:
-            value = kind(text)
-        except ValueError:
-            value = 0
-        if value <= 0:
-            raise argparse.ArgumentTypeError(f"{text!r} is not a positive number")
-        return value
-    return parse
-
-
 def _common(p) -> None:
     p.add_argument("src")
     p.add_argument("-o", "--output", required=True, help="the image path; its suffix picks the format")
-    p.add_argument("--timeout", type=_positive(float), default=TIMEOUT, metavar="SECONDS",
+    p.add_argument("--timeout", type=positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop after this long (default {TIMEOUT:g})")
-    p.add_argument("--max-bytes", type=_positive(int), default=MAX_BYTES, metavar="N",
+    p.add_argument("--max-bytes", type=positive(int), default=MAX_BYTES, metavar="N",
                    help=f"refuse an output larger than this (default {MAX_BYTES})")
-    p.add_argument("--max-pixels", type=_positive(int), default=MAX_PIXELS, metavar="N",
+    p.add_argument("--max-pixels", type=positive(int), default=MAX_PIXELS, metavar="N",
                    help=f"refuse an input with more pixels than this (default {MAX_PIXELS})")
-    p.add_argument("--max-input-bytes", type=_positive(int), default=MAX_INPUT_BYTES, metavar="N",
+    p.add_argument("--max-input-bytes", type=positive(int), default=MAX_INPUT_BYTES, metavar="N",
                    help=f"refuse an input larger than this (default {MAX_INPUT_BYTES})")
     p.set_defaults(fn=run, needs_render=False)
 
@@ -253,13 +232,13 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="images_cmd", required=True, metavar="{resize,convert,thumbnail,strip}")
     r = sub.add_parser("resize", help="scale to fit a width and/or height, keeping the aspect ratio")
     _common(r)
-    r.add_argument("--width", type=_positive(int), help="fit within this width")
-    r.add_argument("--height", type=_positive(int), help="fit within this height")
+    r.add_argument("--width", type=positive(int), help="fit within this width")
+    r.add_argument("--height", type=positive(int), help="fit within this height")
     c = sub.add_parser("convert", help="re-encode as " + " ".join(OUTPUT_SUFFIXES))
     _common(c)
     t = sub.add_parser("thumbnail", help="scale to fit a square, keeping the aspect ratio")
     _common(t)
-    t.add_argument("--size", type=_positive(int), default=256, metavar="PIXELS", help="the square's side (default 256)")
+    t.add_argument("--size", type=positive(int), default=256, metavar="PIXELS", help="the square's side (default 256)")
     s = sub.add_parser("strip", help="re-encode with no EXIF, GPS or other metadata (orientation applied)")
     _common(s)
 

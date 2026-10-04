@@ -43,6 +43,7 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 from . import raster
+from ._shared import positive
 from .usercontent import Limits, UserContentError, UserContentRenderer, _supervise, netns_available, render_html
 
 HTML = (".html", ".htm")
@@ -349,20 +350,6 @@ def _child(job_path: str) -> int:
 
 # ---------------------------------------------------------------- the commands
 
-def _positive(kind):
-    def parse(text):
-        try:
-            value = kind(text)
-        except ValueError:
-            value = 0
-        if value <= 0:
-            import argparse
-
-            raise argparse.ArgumentTypeError(f"{text!r} is not a positive number")
-        return value
-    return parse
-
-
 def add_arguments(p, what: str) -> None:
     """The options of render-html (`what` "html"), render-md ("md") and pdf-pages ("pdf")."""
     d = Limits()
@@ -372,10 +359,10 @@ def add_arguments(p, what: str) -> None:
     if what != "pdf":
         p.add_argument("--pdf", metavar="OUT", help="the PDF path (default: beside SRC, suffix .pdf, unless --png)")
     p.add_argument("--png", metavar="OUTDIR", help="write one image per page: OUTDIR/page-001.png, ...")
-    p.add_argument("--thumbnail", type=_positive(int), metavar="W",
+    p.add_argument("--thumbnail", type=positive(int), metavar="W",
                    help="write the first page W pixels wide: OUTDIR/thumbnail.png, or <stem>.thumbnail.png "
                         "beside the PDF")
-    p.add_argument("--width", type=_positive(int), default=WIDTH, metavar="PX",
+    p.add_argument("--width", type=positive(int), default=WIDTH, metavar="PX",
                    help=f"page image width (default {WIDTH})")
     if what != "pdf":
         p.add_argument("--paper", choices=PAPERS, help="unless the page sets @page size (default letter)")
@@ -385,13 +372,13 @@ def add_arguments(p, what: str) -> None:
     if what == "md":
         p.add_argument("--format", dest="fmt", choices=("memo", "document"),
                        help="the house format (default: front matter, else memo)")
-    p.add_argument("--max-bytes", type=_positive(int), default=d.max_bytes, metavar="N",
+    p.add_argument("--max-bytes", type=positive(int), default=d.max_bytes, metavar="N",
                    help=f"cap on the source plus what it loads (default {d.max_bytes})")
-    p.add_argument("--max-pages", type=_positive(int), default=d.max_pages, metavar="N",
+    p.add_argument("--max-pages", type=positive(int), default=d.max_pages, metavar="N",
                    help=f"page cap (default {d.max_pages})")
-    p.add_argument("--timeout", type=_positive(float), default=d.timeout, metavar="SECONDS",
+    p.add_argument("--timeout", type=positive(float), default=d.timeout, metavar="SECONDS",
                    help=f"wall clock of the whole call (default {d.timeout:g})")
-    p.add_argument("--max-memory", type=_positive(int), default=d.max_memory_mb, metavar="MB",
+    p.add_argument("--max-memory", type=positive(int), default=d.max_memory_mb, metavar="MB",
                    help=f"memory cap of each render child (default {d.max_memory_mb})")
     p.add_argument("--require-netns", action="store_true", help="fail (exit 3) unless every child gets no network")
     p.add_argument("--json", action="store_true", help="print the result as one JSON line")

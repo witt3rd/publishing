@@ -37,22 +37,19 @@ has no text (a scanned PDF; the file was read fine).
 """
 import argparse
 import importlib.util
-import os
 import re
 import shutil
-import signal
-import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
+
+from ._shared import positive, run_supervised
 
 MARKITDOWN = "0.1.8"  # the exact pin in pyproject.toml's `extract` extra
 SUFFIXES = (".pdf", ".docx", ".pptx", ".xlsx", ".html", ".htm", ".csv", ".json", ".xml", ".epub", ".txt")
 TIMEOUT = 60.0  # seconds; the venue's
 MAX_BYTES = 32 * 2**20  # the venue's buffer
 STDERR_CHARS = 400
-_POLL = 0.05
 
 
 class ExtractError(Exception):
@@ -127,33 +124,8 @@ def extract(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
 
 
 def _run(src: Path, output: Path, err_path: Path, timeout: float, max_bytes: int) -> None:
-    with open(err_path, "wb") as err:
-        proc = subprocess.Popen([sys.executable, "-m", "publishing.extract", "--worker", str(src), str(output)],
-                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err,
-                                start_new_session=True)
-        try:
-            deadline = time.monotonic() + timeout
-            while proc.poll() is None:
-                if time.monotonic() >= deadline:
-                    raise ExtractError(f"markitdown timed out after {timeout:g} s")
-                if output.exists() and output.stat().st_size > max_bytes:
-                    raise ExtractError(f"markitdown output is over the {max_bytes}-byte cap")
-                try:
-                    proc.wait(timeout=_POLL)
-                except subprocess.TimeoutExpired:
-                    pass
-        finally:
-            if proc.poll() is None:
-                try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                proc.wait()
-    status = proc.returncode
-    if status != 0 or not output.is_file():
-        with open(err_path, "rb") as f:
-            text = f.read(16 * STDERR_CHARS).decode("utf-8", "replace")[:STDERR_CHARS].rstrip()
-        raise ExtractError(text or f"markitdown failed ({status if status >= 0 else f'signal {-status}'})")
+    run_supervised([sys.executable, "-m", "publishing.extract", "--worker", str(src), str(output)], "markitdown",
+                   output, err_path, timeout, max_bytes, ExtractError, stderr_chars=STDERR_CHARS)
 
 
 # --- the child --------------------------------------------------------------------------------
@@ -219,24 +191,12 @@ def _worker(src: str, out: str) -> int:
 
 # --- the command ------------------------------------------------------------------------------
 
-def _positive(kind):
-    def parse(text):
-        try:
-            value = kind(text)
-        except ValueError:
-            value = 0
-        if value <= 0:
-            raise argparse.ArgumentTypeError(f"{text!r} is not a positive number")
-        return value
-    return parse
-
-
 def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("src", help="the document: " + " ".join(SUFFIXES))
     p.add_argument("-o", "--output", help="the markdown path (default: beside SRC, suffix .md; never overwritten)")
-    p.add_argument("--timeout", type=_positive(float), default=TIMEOUT, metavar="SECONDS",
+    p.add_argument("--timeout", type=positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop the extractor after this long (default {TIMEOUT:g})")
-    p.add_argument("--max-bytes", type=_positive(int), default=MAX_BYTES, metavar="N",
+    p.add_argument("--max-bytes", type=positive(int), default=MAX_BYTES, metavar="N",
                    help=f"refuse an output larger than this (default {MAX_BYTES})")
     p.set_defaults(fn=run, needs_render=False)
 
