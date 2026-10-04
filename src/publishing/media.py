@@ -23,12 +23,12 @@ import argparse
 import json
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
+
+from ._shared import local_dest, local_source, positive, run_supervised
 
 AUDIO_SUFFIXES = (".mp3", ".m4a", ".opus", ".ogg", ".flac", ".wav")
 VIDEO_SUFFIXES = (".mp4", ".webm", ".mkv", ".mov")
@@ -38,7 +38,6 @@ TIMEOUT = 300.0  # seconds of wall clock per ffmpeg
 MAX_BYTES = 512 * 2**20
 MAX_SECONDS = 3600.0  # input duration
 STDERR_CHARS = 400
-_POLL = 0.05
 
 # Codec by output suffix: (video, audio). None: the output has no such stream.
 _AUDIO = {".mp3": "libmp3lame", ".m4a": "aac", ".opus": "libopus", ".ogg": "libvorbis", ".flac": "flac",
@@ -70,22 +69,11 @@ def _tool(name: str) -> str:
 
 
 def _source(src, kinds=INPUT_SUFFIXES) -> Path:
-    text = str(src)
-    path = Path(text)
-    if "://" in text or text.startswith(("-", "pipe:", "/dev/")) or path.suffix.lower() not in kinds:
-        raise UsageError(f"{text}: not a supported local media file ({', '.join(kinds)})")
-    if not path.is_file():
-        raise UsageError(f"{text}: no such file")
-    return path.resolve()
+    return local_source(src, kinds, "media file", UsageError)
 
 
 def _dest(out, kinds) -> Path:
-    path = Path(out)
-    if path.suffix.lower() not in kinds:
-        raise UsageError(f"{path}: output must be one of {', '.join(kinds)}")
-    if path.exists():
-        raise UsageError(f"{path} exists; never overwrite")
-    return path
+    return local_dest(out, kinds, UsageError)
 
 
 def duration(src: Path) -> float:
@@ -137,31 +125,7 @@ def _encode(args: list[str], dest: Path, sources, *, timeout, max_bytes, max_sec
 
 
 def _run(cmd, out: Path, err_path: Path, timeout: float, max_bytes: int) -> None:
-    with open(err_path, "wb") as err:
-        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err,
-                                start_new_session=True)
-        try:
-            deadline = time.monotonic() + timeout
-            while proc.poll() is None:
-                if time.monotonic() >= deadline:
-                    raise MediaError(f"ffmpeg timed out after {timeout:g} s")
-                if out.exists() and out.stat().st_size > max_bytes:
-                    raise MediaError(f"output is over the {max_bytes}-byte cap")
-                try:
-                    proc.wait(timeout=_POLL)
-                except subprocess.TimeoutExpired:
-                    pass
-        finally:
-            if proc.poll() is None:
-                try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                proc.wait()
-    if proc.returncode != 0:
-        with open(err_path, "rb") as f:
-            text = _clip(f.read())
-        raise MediaError(text or f"ffmpeg failed ({proc.returncode})")
+    run_supervised(cmd, "ffmpeg", out, err_path, timeout, max_bytes, MediaError, clip=_clip, need_output=False)
     if out.exists() and out.stat().st_size >= max_bytes:  # -fs stops at the cap and exits 0
         raise MediaError(f"output reached the {max_bytes}-byte cap")
 
@@ -244,18 +208,6 @@ def concat(sources, dest, *, timeout=TIMEOUT, max_bytes=MAX_BYTES, max_seconds=M
 
 # --- the command ------------------------------------------------------------------------------
 
-def _positive(kind):
-    def parse(text):
-        try:
-            value = kind(text)
-        except ValueError:
-            value = 0
-        if value <= 0:
-            raise argparse.ArgumentTypeError(f"{text!r} is not a positive number")
-        return value
-    return parse
-
-
 def _nonneg(text):
     try:
         value = float(text)
@@ -267,11 +219,11 @@ def _nonneg(text):
 
 
 def _limits(p) -> None:
-    p.add_argument("--timeout", type=_positive(float), default=TIMEOUT, metavar="SECONDS",
+    p.add_argument("--timeout", type=positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop ffmpeg after this long (default {TIMEOUT:g})")
-    p.add_argument("--max-bytes", type=_positive(int), default=MAX_BYTES, metavar="N",
+    p.add_argument("--max-bytes", type=positive(int), default=MAX_BYTES, metavar="N",
                    help=f"refuse an output larger than this (default {MAX_BYTES})")
-    p.add_argument("--max-seconds", type=_positive(float), default=MAX_SECONDS, metavar="SECONDS",
+    p.add_argument("--max-seconds", type=positive(float), default=MAX_SECONDS, metavar="SECONDS",
                    help=f"refuse input longer than this (default {MAX_SECONDS:g})")
     p.set_defaults(fn=run, needs_render=False)
 
@@ -286,14 +238,14 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     v = sub.add_parser("video", help="transcode a video: " + " ".join(VIDEO_SUFFIXES))
     v.add_argument("src")
     v.add_argument("-o", "--output", required=True, help="the video path; its suffix picks the codecs")
-    v.add_argument("--height", type=_positive(int), help="scale to this height, keeping the aspect ratio")
+    v.add_argument("--height", type=positive(int), help="scale to this height, keeping the aspect ratio")
     v.add_argument("--crf", type=int, choices=range(0, 52), metavar="0-51", default=23, help="quality (default 23)")
     _limits(v)
     t = sub.add_parser("thumbnail", help="one frame of a video as " + " ".join(IMAGE_SUFFIXES))
     t.add_argument("src")
     t.add_argument("-o", "--output", required=True, help="the image path")
     t.add_argument("--at", type=_nonneg, default=0.0, metavar="SECONDS", help="the frame's time (default 0)")
-    t.add_argument("--width", type=_positive(int), help="scale to this width")
+    t.add_argument("--width", type=positive(int), help="scale to this width")
     _limits(t)
     c = sub.add_parser("concat", help="join files of one type, without re-encoding")
     c.add_argument("src", nargs="+", help="two or more files, in order")

@@ -202,7 +202,7 @@ def _stand_in(monkeypatch, tmp_path, body: str):
     def popen(cmd, **kw):
         return real([sys.executable, str(script), *cmd[-2:]], **kw)
 
-    monkeypatch.setattr(ex.subprocess, "Popen", popen)
+    monkeypatch.setattr(subprocess, "Popen", popen)
     monkeypatch.setattr(ex, "available", lambda: True)
 
 

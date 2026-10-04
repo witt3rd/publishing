@@ -21,12 +21,12 @@ import os
 import platform
 import shutil
 import sys
-import tarfile
 import tempfile
 from pathlib import Path
 
+from ._shared import fetch as _fetch, install_pinned, run_supervised
 from .convert import (MAX_BYTES, TIMEOUT, ConvertError, ConverterNotFound, OutputExists,
-                      SetupError, SourceMissing, _fetch, _run, _sha256, cache_root)
+                      SetupError, SourceMissing, cache_root)
 
 VERSION = "3.12"  # jgm/pandoc
 # arch -> (sha256 of the release archive, sha256 of the pandoc binary inside it): the release's own
@@ -152,7 +152,8 @@ def convert(src, dest=None, *, to: str | None = None, timeout: float = TIMEOUT, 
         staged = temporary / f"source{src.suffix.lower()}"  # pandoc reads this copy only, and its name sets no title
         shutil.copyfile(src, staged)
         cmd = command(bin_, staged, output, fmt, src.stem)
-        _run(cmd, "pandoc", output, temporary / "stderr", timeout, max_bytes, _environment(temporary), cwd=temporary)
+        run_supervised(cmd, "pandoc", output, temporary / "stderr", timeout, max_bytes, ConvertError,
+                       env=_environment(temporary), cwd=temporary)
         size = output.stat().st_size
         if size > max_bytes:
             raise ConvertError(f"pandoc output is {size} bytes, over the {max_bytes}-byte cap")
@@ -193,33 +194,8 @@ def install(bin_dir=None, arch: str | None = None) -> Path:
         raise SetupError(f"no pinned pandoc build for {arch or platform.machine()} (pinned: linux {', '.join(sorted(PINS))})")
     archive_sha, binary_sha = PINS[arch]
     dest = Path(bin_dir) / "pandoc" if bin_dir else pinned_bin(arch)
-    if dest.is_file() and _sha256(dest) == binary_sha and os.access(dest, os.X_OK):
-        return dest
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="publishing-setup-", dir=dest.parent) as tmp:
-        archive = Path(tmp) / "pandoc.tar.gz"
-        try:
-            _fetch(url(arch), archive)
-        except OSError as e:
-            raise SetupError(f"could not download {url(arch)}: {e}") from None
-        if _sha256(archive) != archive_sha:
-            raise SetupError(f"{url(arch)} does not match its pinned checksum; nothing installed")
-        member = f"pandoc-{VERSION}/bin/pandoc"
-        with tarfile.open(archive) as t:
-            try:
-                info = t.getmember(member)
-            except KeyError:
-                raise SetupError(f"{url(arch)} has no {member}") from None
-            if not info.isfile():
-                raise SetupError(f"{url(arch)}: {member} is not a file")
-            staged = Path(tmp) / "pandoc"
-            with t.extractfile(info) as f, open(staged, "wb") as out:
-                shutil.copyfileobj(f, out)
-        if _sha256(staged) != binary_sha:
-            raise SetupError(f"{member} does not match its pinned checksum; nothing installed")
-        staged.chmod(0o755)
-        os.replace(staged, dest)
-    return dest
+    return install_pinned(dest, "pandoc", url(arch), f"pandoc-{VERSION}/bin/pandoc", archive_sha, binary_sha,
+                          SetupError, _fetch)
 
 
 def setup(bin_dir=None, arch: str | None = None) -> int:

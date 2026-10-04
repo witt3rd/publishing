@@ -26,18 +26,14 @@ error. Exit codes of the command: 0 converted (stdout: the PDF's path), 1 the co
 2 usage (not an Office file, no such source, the output exists), 3 no converter, or setup failed.
 """
 import argparse
-import hashlib
 import os
 import platform
 import shutil
-import signal
-import subprocess
 import sys
-import tarfile
 import tempfile
-import time
-import urllib.request
 from pathlib import Path
+
+from ._shared import fetch as _fetch, install_pinned, positive, run_supervised
 
 VERSION = "v0.6.7"  # developer0hye/office2pdf; tag commit 8f34766a1d1567b9d81d606e45ea690987a7c6ed
 # target -> (sha256 of the release archive, sha256 of the office2pdf binary inside it). The archive
@@ -61,7 +57,6 @@ DEV_BIN = Path.home() / "src/ext/office2pdf/target/release/office2pdf"
 TIMEOUT = 120.0  # seconds
 MAX_BYTES = 256 * 2**20
 STDERR_CHARS = 400
-_POLL = 0.05  # seconds between checks of a running converter's output size
 
 
 class ConvertError(Exception):
@@ -152,8 +147,8 @@ def convert(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
     temporary = Path(tempfile.mkdtemp(prefix="publishing-convert-"))
     try:
         output = temporary / "output.pdf"
-        _run([str(bin_), str(src.resolve()), "-o", str(output)], "office2pdf", output, temporary / "stderr",
-             timeout, max_bytes, dict(os.environ))
+        run_supervised([str(bin_), str(src.resolve()), "-o", str(output)], "office2pdf", output, temporary / "stderr",
+                       timeout, max_bytes, ConvertError, env=dict(os.environ))
         size = output.stat().st_size
         if size > max_bytes:
             raise ConvertError(f"office2pdf output is {size} bytes, over the {max_bytes}-byte cap")
@@ -174,37 +169,6 @@ def convert(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
         shutil.rmtree(temporary, ignore_errors=True)
 
 
-def _run(cmd: list, name: str, output: Path, err_path: Path, timeout: float, max_bytes: int, env: dict,
-         cwd=None) -> None:
-    """Run `cmd` (the converter `name`) under the time limit and the output cap; raise ConvertError."""
-    with open(err_path, "wb") as err:
-        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err,
-                                start_new_session=True, env=env, cwd=cwd)
-        try:
-            deadline = time.monotonic() + timeout
-            while proc.poll() is None:
-                if time.monotonic() >= deadline:
-                    raise ConvertError(f"{name} timed out after {timeout:g} s")
-                if output.exists() and output.stat().st_size > max_bytes:
-                    raise ConvertError(f"{name} output is over the {max_bytes}-byte cap")
-                try:
-                    proc.wait(timeout=_POLL)
-                except subprocess.TimeoutExpired:
-                    pass
-        finally:
-            if proc.poll() is None:
-                try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                proc.wait()
-    status = proc.returncode
-    if status != 0 or not output.is_file():
-        with open(err_path, "rb") as f:
-            text = f.read(16 * STDERR_CHARS).decode("utf-8", "replace")[:STDERR_CHARS].rstrip()
-        raise ConvertError(text or f"{name} failed ({status if status >= 0 else f'signal {-status}'})")
-
-
 # --- the pinned install -----------------------------------------------------------------------
 
 def archive_stem(target: str) -> str:
@@ -213,19 +177,6 @@ def archive_stem(target: str) -> str:
 
 def url(target: str) -> str:
     return f"{RELEASES}/{VERSION}/{archive_stem(target)}.tar.gz"
-
-
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
-def _fetch(address: str, out: Path) -> None:
-    with urllib.request.urlopen(address, timeout=60) as r, open(out, "wb") as f:
-        shutil.copyfileobj(r, f)
 
 
 def install(bin_dir=None, target: str | None = None) -> Path:
@@ -238,33 +189,8 @@ def install(bin_dir=None, target: str | None = None) -> Path:
                          f"(pinned: {', '.join(sorted(PINS))})")
     archive_sha, binary_sha = PINS[target]
     dest = Path(bin_dir) / "office2pdf" if bin_dir else pinned_bin(target)
-    if dest.is_file() and _sha256(dest) == binary_sha and os.access(dest, os.X_OK):
-        return dest
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="publishing-setup-", dir=dest.parent) as tmp:
-        archive = Path(tmp) / "office2pdf.tar.gz"
-        try:
-            _fetch(url(target), archive)
-        except OSError as e:
-            raise SetupError(f"could not download {url(target)}: {e}") from None
-        if _sha256(archive) != archive_sha:
-            raise SetupError(f"{url(target)} does not match its pinned checksum; nothing installed")
-        member = f"{archive_stem(target)}/office2pdf"
-        with tarfile.open(archive) as t:
-            try:
-                info = t.getmember(member)
-            except KeyError:
-                raise SetupError(f"{url(target)} has no {member}") from None
-            if not info.isfile():
-                raise SetupError(f"{url(target)}: {member} is not a file")
-            staged = Path(tmp) / "office2pdf"
-            with t.extractfile(info) as f, open(staged, "wb") as out:
-                shutil.copyfileobj(f, out)
-        if _sha256(staged) != binary_sha:
-            raise SetupError(f"{member} does not match its pinned checksum; nothing installed")
-        staged.chmod(0o755)
-        os.replace(staged, dest)
-    return dest
+    return install_pinned(dest, "office2pdf", url(target), f"{archive_stem(target)}/office2pdf", archive_sha,
+                          binary_sha, SetupError, _fetch)
 
 
 def setup(bin_dir=None, target: str | None = None) -> int:
@@ -282,27 +208,15 @@ def setup(bin_dir=None, target: str | None = None) -> int:
 
 # --- the command ------------------------------------------------------------------------------
 
-def _positive(kind):
-    def parse(text):
-        try:
-            value = kind(text)
-        except ValueError:
-            value = 0
-        if value <= 0:
-            raise argparse.ArgumentTypeError(f"{text!r} is not a positive number")
-        return value
-    return parse
-
-
 def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("src", help="the source: .docx, .xlsx or .pptx (office2pdf); .md, .html, .docx or .odt (pandoc)")
     p.add_argument("-o", "--output", help="the output path (default: beside SRC, suffix of --to, else .pdf; never overwritten)")
     p.add_argument("--to", choices=("pdf", "docx", "html"), help="the output format (default: from -o's suffix, else pdf)")
     p.add_argument("--engine", choices=("auto", "office2pdf", "pandoc"), default="auto",
                    help="auto: office2pdf for an Office file to PDF, pandoc for everything else")
-    p.add_argument("--timeout", type=_positive(float), default=TIMEOUT, metavar="SECONDS",
+    p.add_argument("--timeout", type=positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop the converter after this long (default {TIMEOUT:g})")
-    p.add_argument("--max-bytes", type=_positive(int), default=MAX_BYTES, metavar="N",
+    p.add_argument("--max-bytes", type=positive(int), default=MAX_BYTES, metavar="N",
                    help=f"refuse an output larger than this (default {MAX_BYTES})")
     p.set_defaults(fn=run, needs_render=False)
 
