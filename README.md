@@ -128,6 +128,19 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   `tools/action-check.sh` proves it on a scratch repo, and this repo's CI runs that.
 - **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright,
   HyperFrames) is a minor bump; a repo adopts it by bumping its pin and running `publishing check`.
+- **Adopter pins.** Pin the tool by the `publishing` version in `report.toml` (a release tag, without the
+  `v`); that is what builds. Pin the action in `uses:` by tag (`@v0.10.0`) or, for supply-chain strictness, by
+  full 40-character commit SHA (`@<sha> # v0.10.0`); a branch name or short SHA is not a pin. The `uses:`
+  ref only selects `ci/check.sh`, so keep it at the same release as the `report.toml` pin. To pin a commit
+  that is not a release, run `PUBLISHING_FROM=git+https://github.com/witt3rd/publishing@<full-sha> ci/check.sh`.
+- **Rebuilding a report.** Run `publishing build docs/<kind>/<topic>-vN` with the pinned version (it re-runs
+  itself through `uvx` when the installed version differs), then `publishing check` and commit the source and
+  the rebuilt file together. After a pin bump, rebuild every report and commit the lot with the new pin; a
+  CI failure on a stale file is fixed by rebuilding, never by editing the PDF or loosening the check.
+- **When to bump minor.** Minor for anything that can change a rebuilt file or a profile's pinned
+  toolchain: theme, fonts, Playwright, HyperFrames, Chromium, a new or re-pinned profile dependency, a new
+  command or a changed output. Patch only for fixes that leave every rebuilt file as it was. Cut a new tag,
+  never move one.
 
 ## Video
 
