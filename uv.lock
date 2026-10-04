@@ -1235,7 +1235,7 @@ wheels = [
 
 [[package]]
 name = "publishing"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 
 [package.optional-dependencies]
@@ -1282,7 +1282,7 @@ requires-dist = [
     { name = "pypdf", marker = "extra == 'render'", specifier = "==6.19.0" },
     { name = "pypdfium2", marker = "extra == 'render'", specifier = "==5.13.0" },
 ]
-provides-extras = ["render", "video", "convert", "media", "extract"]
+provides-extras = ["render", "video", "convert", "media", "pandoc", "extract"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = "==9.1.1" }]

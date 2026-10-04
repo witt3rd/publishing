@@ -23,6 +23,14 @@ PDFium (page images and thumbnails: render-html, render-md, pdf-pages, build --p
   PyPI package pypdfium2, pinned in uv.lock. https://pdfium.googlesource.com/pdfium, BSD-3-Clause;
   pypdfium2 https://github.com/pypdfium2-team/pypdfium2, Apache-2.0 or BSD-3-Clause.
 
+pandoc (the pandoc engine of convert), pinned in src/publishing/pandoc.py with the sha256 of each release.
+  https://pandoc.org, by John MacFarlane and contributors, GPL-2.0-or-later. Run as a separate program,
+  not linked or vendored.
+
+TeX Live (pdfLaTeX, for PDFs from pandoc), Debian's texlive-latex-base, texlive-latex-recommended,
+  texlive-fonts-recommended and lmodern in Dockerfile.pandoc. https://tug.org/texlive, free software under
+  the licences of each package.
+
 FFmpeg (video encoding), from the host or the container's Debian package; LGPL/GPL per build.
   https://ffmpeg.org
 

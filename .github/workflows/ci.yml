@@ -53,6 +53,30 @@ jobs:
           docker run --rm --network none -v "$PWD/work:/work" publishing-convert:run fixture.docx
           test "$(head -c 5 work/fixture.pdf)" = "%PDF-"
 
+  pandoc:
+    name: pandoc profile in a container, real conversions with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.pandoc --target test -t publishing-pandoc:ci .
+      - run: docker run --rm --network none publishing-pandoc:ci
+      - run: docker build -f Dockerfile.pandoc -t publishing-pandoc:run .
+      - name: the image converts any to any with a read-only root, and nothing reaches the network
+        run: |
+          set -euo pipefail
+          mkdir -p work && chmod 777 work
+          printf '# Hello\n\nWorld, café.\n' > work/in.md
+          run() { docker run --rm --network none --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
+                    --user 65532:65532 -v "$PWD/work:/work" publishing-pandoc:run "$@"; }
+          run in.md
+          run in.md -o out.docx
+          run out.docx --to html
+          run in.md -o again.pdf
+          test "$(head -c 5 work/in.pdf)" = "%PDF-"
+          test "$(head -c 2 work/out.docx)" = "PK"
+          grep -q '<h1' work/out.html
+          cmp work/in.pdf work/again.pdf
+
   extract:
     name: extract profile in a container, with no network
     runs-on: ubuntu-latest

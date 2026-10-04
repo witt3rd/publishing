@@ -1,7 +1,7 @@
 [project]
 name = "publishing"
-version = "0.6.0"
-description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, Office files to PDF"
+version = "0.7.0"
+description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, documents to PDF, docx and html"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -31,6 +31,10 @@ convert = []
 # ffmpeg transcodes, thumbnails and concatenation: the standard library only. ffmpeg and ffprobe come from the
 # host or, pinned, from the media image (Dockerfile.media; README "Media").
 media = []
+# The pandoc engine of `convert`: markdown, html, docx and odt to pdf, docx and html through the pandoc binary
+# that `publishing setup --pandoc` installs (pinned in src/publishing/pandoc.py); a PDF also needs a TeX
+# install (Dockerfile.pandoc). The standard library only, like convert.
+pandoc = []
 # Documents to markdown through markitdown (exact pin; every parser it needs is pinned in uv.lock). No
 # Playwright, no Chromium; no audio, speech or LLM extras. onnxruntime (markitdown's file-type detector,
 # magika) is pinned to a release with wheels for Python 3.11-3.14; it has no musl wheel, so this profile

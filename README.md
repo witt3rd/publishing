@@ -18,22 +18,26 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.6.0'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.7.0'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.6.0'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.7.0'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.6.0'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.7.0'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 
+# pandoc: markdown, html, docx and odt to pdf, docx and html (the standard library and pandoc; PDFs also need TeX)
+uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.7.0'
+publishing setup --pandoc           # the pinned pandoc, checksummed, into the user cache
+
 # extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
-uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.6.0'
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.7.0'
 
 # media: audio and video through ffmpeg (the standard library only; ffmpeg on the PATH, or use the media image)
-uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.6.0'
+uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.7.0'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -53,6 +57,7 @@ publishing render-md NOTE.md --pdf OUT.pdf      # a person's markdown as a house
 publishing pdf-pages FILE.pdf --png OUTDIR      # any PDF's pages as images
 publishing build --user-content [SOURCE...]     # build untrusted memos/documents the same way
 publishing convert report.docx [-o report.pdf]  # an Office file to a PDF (the convert profile; see Convert)
+publishing convert notes.md -o notes.docx       # markdown, html, docx or odt to pdf, docx or html (the pandoc profile)
 publishing extract report.pdf [-o report.md]    # a document to markdown (the extract profile; see Extract)
 publishing media audio|video|thumbnail|concat ...   # ffmpeg transcodes, frames, joins (the media profile; see Media)
 ```
@@ -77,7 +82,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   line, figures, footnotes and highlighted code.
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.6.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.7.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -126,14 +131,44 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
 
 ## Convert
 
-`publishing convert SRC [-o OUT] [--timeout SECONDS] [--max-bytes N]`, or from Python
-`publishing.convert.convert(src, dest=None, *, timeout=120, max_bytes=256 MiB) -> Path` (it raises a
-`ConvertError` subclass whose `exit_code` is the command's). It is the headless entry for services:
+`publishing convert SRC [-o OUT] [--to pdf|docx|html] [--engine auto|office2pdf|pandoc] [--timeout SECONDS]
+[--max-bytes N]`, or from Python `publishing.convert.convert(src, dest=None, *, timeout=120, max_bytes=256 MiB)
+-> Path` (Office to PDF) and `publishing.pandoc.convert(src, dest=None, *, to=None, timeout=120,
+max_bytes=256 MiB) -> Path` (it raises a `ConvertError` subclass whose `exit_code` is the command's). It is the
+headless entry for services. Two engines, one command:
 
-- **In.** A file named `.docx`, `.xlsx` or `.pptx`, in any letter case. Nothing else reaches the
-  converter (exit 2).
-- **Out.** One PDF at `OUT`, by default beside `SRC` with the suffix `.pdf`; its path is the only line on
-  stdout. An existing file is never overwritten (exit 2). On any failure there is no `OUT`.
+| Source | To | Engine (`auto`) |
+|---|---|---|
+| `.docx` `.xlsx` `.pptx` | pdf | office2pdf |
+| `.md` `.markdown` `.html` `.htm` `.docx` `.odt` | pdf, docx, html | pandoc |
+
+The output format is `--to`, else the suffix of `-o`, else pdf. An Office file with no `--to` and no
+`-o` suffix pandoc can name stays an office2pdf PDF, as before pandoc joined. `--engine pandoc` sends a
+`.docx` to pandoc even for a PDF; `--engine office2pdf` writes PDFs only. A source neither engine reads (a
+spreadsheet to docx, `.txt`) is exit 2.
+
+- **In.** The source's suffix, in any letter case, decides the reader. Nothing else reaches a converter
+  (exit 2).
+- **Out.** One file at `OUT`, by default beside `SRC` with the suffix of the format; its path is the only
+  line on stdout. An existing file is never overwritten (exit 2). On any failure there is no `OUT`.
+- **Same limits, both engines.** The converter is stopped after `--timeout` seconds (default 120) or as soon as
+  its output passes `--max-bytes` (default 268435456); it runs in a fresh temporary folder under `TMPDIR`
+  that is always removed. Neither changes a conversion that stays inside them.
+- **Errors** (stderr, `publishing: ` and one message). A non-zero exit carries at most 400 characters of the
+  converter's stderr, or `<converter> failed (<status>)` when it wrote none; a zero exit with no output is
+  the same error; so is an output that is not the format asked for (`%PDF-`, a zip for docx), a time-out or
+  an output over the cap.
+- **Exit codes.** 0 converted; 1 the conversion failed; 2 usage (not a source the engine reads, no such
+  source, the output exists, `--to` against the `-o` suffix, a bad option); 3 no converter
+  (`office2pdf not found`, `pandoc not found`, or `pdflatex not found` for a PDF), or `setup` failed.
+- **Environment.** `OFFICE2PDF_BIN`, `PANDOC_BIN` (each, when set, is authoritative, even when wrong or
+  empty: no fallback); `PUBLISHING_CACHE` (default `$XDG_CACHE_HOME/publishing`, else
+  `~/.cache/publishing`) for the pinned installs; `SOURCE_DATE_EPOCH` (pandoc's dates; default 0);
+  `TMPDIR`; `OFFICE_PDF_TESTS=1` and `PANDOC_TESTS=1` make the real-conversion tests run, and fail without
+  their converters.
+
+### Office to PDF (office2pdf)
+
 - **Converter.** [office2pdf](https://github.com/developer0hye/office2pdf) `v0.6.7` (pure Rust, no
   LibreOffice), Apache-2.0. `publishing setup --convert [--bin-dir DIR]` downloads the release build for
   this machine (`x86_64` musl and glibc, `aarch64` glibc, macOS), checks the archive's and the binary's
@@ -143,24 +178,40 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   never falls back. Otherwise `/usr/local/bin/office2pdf`, then the pinned install in the user cache,
   then a developer build at `~/src/ext/office2pdf/target/release/office2pdf`. Only an executable regular
   file is a converter.
-- **The call.** `office2pdf SRC -o OUT` into a fresh temporary folder under `TMPDIR`, moved into place
-  when it succeeds; the folder is always removed.
-- **Limits.** The converter is stopped after `--timeout` seconds (default 120) or as soon as its output
-  passes `--max-bytes` (default 268435456). Neither changes a conversion that stays inside them.
-- **Errors** (stderr, `publishing: ` and one message). A non-zero exit carries at most 400 characters
-  of the converter's stderr, or `office2pdf failed (<status>)` when it wrote none; a zero exit with no
-  output is the same error; so is an output that is not a PDF, a time-out or an output over the cap.
-- **Exit codes.** 0 converted; 1 the conversion failed; 2 usage (not an Office file, no such source,
-  the output exists, a bad option); 3 no converter (`office2pdf not found`), or `setup` failed.
-- **Environment.** `OFFICE2PDF_BIN` (above); `PUBLISHING_CACHE` (default `$XDG_CACHE_HOME/publishing`,
-  else `~/.cache/publishing`) for the pinned install; `TMPDIR` for the temporary folder;
-  `OFFICE_PDF_TESTS=1` makes the real-conversion test run, and fail without a converter.
+- **The call.** `office2pdf SRC -o OUT` into the temporary folder, moved into place when it succeeds.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.6.0 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.7.0 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.6.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.7.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+
+### Any to any (pandoc)
+
+- **Converter.** [pandoc](https://pandoc.org) `3.12` (GPL-2.0-or-later, run as a separate program).
+  `publishing setup --pandoc [--bin-dir DIR]` downloads the Linux release (`amd64`, `arm64`), checks the
+  archive's and the binary's sha256 against `src/publishing/pandoc.py`, and installs it into the user cache or
+  as `DIR/pandoc`. `PANDOC_BIN`, then `/usr/local/bin/pandoc`, then the cache. PDFs go through pdfLaTeX
+  (`texlive-latex-base`, `-recommended`, `texlive-fonts-recommended`, `lmodern`: the pandoc image has them);
+  without `pdflatex` a PDF is exit 3 and docx and html still convert. pdfLaTeX reads UTF-8 text but not
+  every script: a glyph the Latin Modern fonts lack is dropped.
+- **The call.** `pandoc --sandbox -f READER -t WRITER` on a copy of the source in the temporary folder.
+  Readers: markdown (raw TeX and raw attributes off), html, docx, odt. Writers: pdf, docx and html5
+  (standalone). `--sandbox` means no file is read or written but that one, and nothing is fetched: images and
+  includes in a document are not pulled in.
+- **A person's content.** pdfLaTeX runs with shell escape off and TeX's file access in paranoid mode
+  (`openin_any=p`, `openout_any=p`); the environment passed on is `PATH`, `TMPDIR` and the locale, so no
+  secret reaches it. Run the image with `--network none` as well (below).
+- **Deterministic.** `SOURCE_DATE_EPOCH` (the caller's, else 0) and `FORCE_SOURCE_DATE=1` fix every date, and
+  `\pdftrailerid{}` drops the PDF's trailer id (pdfTeX hashes the temporary folder's path into it): the same source in the same image gives the same bytes, for pdf, docx and html.
+- **Container.** `Dockerfile.pandoc`: Debian bookworm slim by digest, the tool from `uv.lock` (extra `pandoc`),
+  the pinned pandoc, a slim TeX Live from the base release (versions printed at build). Entrypoint
+  `publishing convert`; runs as any user, read-only root with `--tmpfs /tmp`:
+  `docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-pandoc notes.md -o notes.pdf`.
+  Its `test` stage runs the pandoc tests and the real conversions; CI runs it with `--network none`.
+- **Relation to the render profile.** Memos and documents still build through the render profile (the house
+  style); pandoc is the any-to-any path, not a second house style. `markdown.py` only reads pandoc's markdown
+  dialect; it never ran pandoc, so this profile replaces no code in the repo.
 
 ## Extract
 
@@ -201,7 +252,7 @@ the folder (images, CSS) are the composition's. `publishing new --format video` 
   (markitdown has no RTF reader; Outlook needs another dependency): exit 2.
 - **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
 - **Containers.** The toolbox image carries the extract extra:
-  `docker run … publishing:0.6.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  `docker run … publishing:0.7.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
   extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
   CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
@@ -294,10 +345,10 @@ the command's). They are the headless render entry for services (the render prof
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.6.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.6.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.6.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.6.0 \
+docker build -t publishing:0.7.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.7.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.7.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.7.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 

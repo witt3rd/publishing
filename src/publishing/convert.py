@@ -152,7 +152,8 @@ def convert(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
     temporary = Path(tempfile.mkdtemp(prefix="publishing-convert-"))
     try:
         output = temporary / "output.pdf"
-        _run(bin_, src.resolve(), output, temporary / "stderr", timeout, max_bytes)
+        _run([str(bin_), str(src.resolve()), "-o", str(output)], "office2pdf", output, temporary / "stderr",
+             timeout, max_bytes, dict(os.environ))
         size = output.stat().st_size
         if size > max_bytes:
             raise ConvertError(f"office2pdf output is {size} bytes, over the {max_bytes}-byte cap")
@@ -173,17 +174,19 @@ def convert(src, dest=None, *, timeout: float = TIMEOUT, max_bytes: int = MAX_BY
         shutil.rmtree(temporary, ignore_errors=True)
 
 
-def _run(bin_: Path, src: Path, output: Path, err_path: Path, timeout: float, max_bytes: int) -> None:
+def _run(cmd: list, name: str, output: Path, err_path: Path, timeout: float, max_bytes: int, env: dict,
+         cwd=None) -> None:
+    """Run `cmd` (the converter `name`) under the time limit and the output cap; raise ConvertError."""
     with open(err_path, "wb") as err:
-        proc = subprocess.Popen([str(bin_), str(src), "-o", str(output)], stdin=subprocess.DEVNULL,
-                                stdout=subprocess.DEVNULL, stderr=err, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=err,
+                                start_new_session=True, env=env, cwd=cwd)
         try:
             deadline = time.monotonic() + timeout
             while proc.poll() is None:
                 if time.monotonic() >= deadline:
-                    raise ConvertError(f"office2pdf timed out after {timeout:g} s")
+                    raise ConvertError(f"{name} timed out after {timeout:g} s")
                 if output.exists() and output.stat().st_size > max_bytes:
-                    raise ConvertError(f"office2pdf output is over the {max_bytes}-byte cap")
+                    raise ConvertError(f"{name} output is over the {max_bytes}-byte cap")
                 try:
                     proc.wait(timeout=_POLL)
                 except subprocess.TimeoutExpired:
@@ -199,7 +202,7 @@ def _run(bin_: Path, src: Path, output: Path, err_path: Path, timeout: float, ma
     if status != 0 or not output.is_file():
         with open(err_path, "rb") as f:
             text = f.read(16 * STDERR_CHARS).decode("utf-8", "replace")[:STDERR_CHARS].rstrip()
-        raise ConvertError(text or f"office2pdf failed ({status if status >= 0 else f'signal {-status}'})")
+        raise ConvertError(text or f"{name} failed ({status if status >= 0 else f'signal {-status}'})")
 
 
 # --- the pinned install -----------------------------------------------------------------------
@@ -292,8 +295,11 @@ def _positive(kind):
 
 
 def add_arguments(p: argparse.ArgumentParser) -> None:
-    p.add_argument("src", help="the Office file: .docx, .xlsx or .pptx")
-    p.add_argument("-o", "--output", help="the PDF path (default: beside SRC, suffix .pdf; never overwritten)")
+    p.add_argument("src", help="the source: .docx, .xlsx or .pptx (office2pdf); .md, .html, .docx or .odt (pandoc)")
+    p.add_argument("-o", "--output", help="the output path (default: beside SRC, suffix of --to, else .pdf; never overwritten)")
+    p.add_argument("--to", choices=("pdf", "docx", "html"), help="the output format (default: from -o's suffix, else pdf)")
+    p.add_argument("--engine", choices=("auto", "office2pdf", "pandoc"), default="auto",
+                   help="auto: office2pdf for an Office file to PDF, pandoc for everything else")
     p.add_argument("--timeout", type=_positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop the converter after this long (default {TIMEOUT:g})")
     p.add_argument("--max-bytes", type=_positive(int), default=MAX_BYTES, metavar="N",
@@ -301,9 +307,32 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.set_defaults(fn=run, needs_render=False)
 
 
-def run(a) -> int:
+def choose(src, dest, to, engine: str) -> tuple[str, str]:
+    """(engine, output format) for a conversion. An Office file to PDF keeps office2pdf, and an Office
+    file with an output path pandoc cannot name stays a PDF, as before pandoc joined."""
+    from . import pandoc
+    office = is_office(src)
     try:
-        dest = convert(a.src, a.output, timeout=a.timeout, max_bytes=a.max_bytes)
+        fmt = pandoc.output_format(dest, to)
+    except pandoc.UnsupportedConversion:
+        if not (office and to is None and engine in ("auto", "office2pdf")):
+            raise
+        fmt = "pdf"
+    if engine == "auto":
+        engine = "office2pdf" if office and fmt == "pdf" else "pandoc"
+    if engine == "office2pdf" and fmt != "pdf":
+        raise pandoc.UnsupportedConversion("office2pdf writes PDFs only; use --engine pandoc for other formats")
+    return engine, fmt
+
+
+def run(a) -> int:
+    from . import pandoc
+    try:
+        engine, fmt = choose(a.src, a.output, a.to, a.engine)
+        if engine == "pandoc":
+            dest = pandoc.convert(a.src, a.output, to=fmt, timeout=a.timeout, max_bytes=a.max_bytes)
+        else:
+            dest = convert(a.src, a.output, timeout=a.timeout, max_bytes=a.max_bytes)
     except ConvertError as e:
         print(f"publishing: {e}", file=sys.stderr)
         return e.exit_code
