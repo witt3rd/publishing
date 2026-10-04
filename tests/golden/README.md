@@ -36,3 +36,14 @@ section of the manifest, and a bump of the shared base image digest or of `uv.lo
   manifest `bytes` is the summary's length, not the media file's.
 - **Render PDFs**: see above (page images exact; PDF checked by page count and text).
 - Everything else is byte-identical. Do not widen the list without evidence of cross-machine drift.
+
+## Maintenance
+
+- **Update procedure is tested**: `tests/test_golden_update.py` drives the same check on a synthetic profile: a
+  deliberate bump fails with the regenerate instruction, passes after `GOLDEN_UPDATE=1`, and regenerating leaves other
+  profiles' manifest sections alone. It also checks, on any host, that the manifest lists exactly the cases.
+- **CI time budget**: `ci/budget.txt` holds a per-job budget; `tools/ci-budget.sh [run-id]` reports a run against it
+  (the nightly `budget` job prints it to the summary, non-blocking). Raise a budget with the change that earns it.
+- **Flake hunt**: `tools/flake-hunt.sh [N]` runs the host suite N times and lists any test whose outcome varies. Three
+  runs (419 outcomes) found none. The in-image golden suites are the ones that can drift by machine (see Tolerance); run
+  the hunt inside a profile image for those.

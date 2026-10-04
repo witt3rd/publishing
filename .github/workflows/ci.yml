@@ -36,6 +36,17 @@ jobs:
         with: { fetch-depth: 0, fetch-tags: true }
       - run: tools/tag-check.sh
 
+  budget:
+    name: CI time budget report (nightly, informational)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions: { contents: read, actions: read }
+    env: { GH_TOKEN: "${{ github.token }}" }
+    steps:
+      - uses: actions/checkout@v7
+      - run: tools/ci-budget.sh | tee -a "$GITHUB_STEP_SUMMARY"
+
   action:
     name: the GitHub Action checks a scratch repo (passes, then fails on a stale PDF)
     runs-on: ubuntu-latest

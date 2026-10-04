@@ -1,0 +1,13 @@
+# seconds  job name (ci.yml); a job over its budget is reported by tools/ci-budget.sh
+# Set at about 1.5x the observed time on main (run 37204582200), so a real slowdown shows and noise does not.
+600 tests and the samples rebuild from source
+90 the GitHub Action checks a scratch repo (passes, then fails on a stale PDF)
+30 every released version (pyproject bump) has its tag
+180 user-content mode in a locked-down container
+90 pandoc profile in a container, real conversions with no network
+90 extract profile in a container, with no network
+45 convert profile on Alpine, real conversion with no network
+90 media profile in a container, with no network
+60 images profile in a container, with no network
+130 render golden fixtures in the toolbox image, with no network
+520 the container image renders headless and reproduces its own bytes
