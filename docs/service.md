@@ -60,20 +60,13 @@ and the `publishing setup [--video|--convert|--pandoc]` that fetches the pinned 
 
 ## 3. Entry points per capability
 
-One CLI, one subcommand per capability. Flags and limits: the README section in the last column.
+One CLI, one subcommand per capability; `publishing --help` lists them and each README section holds the
+flags and limits. Conventions that hold across them:
 
-| Capability | Command | Stdout | Image | Spec |
-|---|---|---|---|---|
-| Render a house deck/memo/document to PDF | `publishing build SRC` / `check` | `built\|current  PATH (N pages)` | toolbox | README "Use", "Conventions" |
-| Video (HTML → MP4) | `publishing build docs/…/topic-v1` | `built  PATH (12.0 s, 1920x1080, …)` | toolbox only | README "Video" |
-| Person's HTML → PDF | `publishing html PAGE.html -o OUT.pdf [--json]` | summary line, or JSON | toolbox | [user-content.md](user-content.md) |
-| HTML → PDF + page images + thumbnail | `publishing render-html PAGE.html --pdf OUT --png DIR --thumbnail 320 --json` | JSON | toolbox | README "Render" |
-| Person's markdown → house memo | `publishing render-md NOTE.md --pdf OUT` | each file written | toolbox | README "Render" |
-| PDF → page images | `publishing pdf-pages FILE.pdf --png DIR` | each file written | toolbox | README "Render" |
-| Office → PDF | `publishing convert report.docx -o report.pdf` | the output path | toolbox, `publishing-convert` (Alpine) | README "Convert" |
-| Any → pdf/docx/html | `publishing convert notes.md -o notes.docx` | the output path | `publishing-pandoc` (PDF needs TeX) | README "Convert" |
-| Document → markdown | `publishing extract report.pdf -o report.md` | the output path | toolbox, `publishing-extract` | README "Extract" |
-| Audio/video | `publishing media audio\|video\|thumbnail\|concat …` | the output path | `publishing-media` | README "Media" |
+- A capability runs in the toolbox image unless a profile image carries it (section 2). Video and the
+  house `build`/`check` run only there; pandoc (any-to-any) and media run only in their profile images.
+- Stdout is the output path (or one JSON line with `--json`); render commands print each file written.
+- A person's content goes through the user-content commands (section 4), never `build --trusted`.
 
 Rules common to the file-in, file-out commands: an existing output is never overwritten (exit 2), a
 failure leaves no output, inputs are local files only (no URLs), and each has `--timeout` and
@@ -119,12 +112,10 @@ Why each flag, and the residual risks: [user-content.md](user-content.md) "Conta
 
 [`examples/service/`](../examples/service/):
 
-| File | What |
-|---|---|
-| `run.sh` | one command in the locked-down container (adds the seccomp profile and `PUBLISHING_USER_CONTENT=1` for render commands); `PUBLISHING_BIN=` runs a local CLI instead |
-| `client.py` | calls `run.sh` from Python and maps exit codes to a verdict (standard library only) |
-| `compose.yaml` | the toolbox, render and profile images as compose services with the same flags |
-| `sample/` | a markdown and an HTML file to try each command on |
+The kit shows the convention, not a catalogue: one wrapper runs a command in the locked-down container
+(it adds the seccomp profile and `PUBLISHING_USER_CONTENT=1` for render commands; `PUBLISHING_BIN=` runs a
+local CLI instead), a standard-library client maps exit codes to a verdict, a compose file carries the
+same flags, and `sample/` holds inputs to try.
 
 ```sh
 cd examples/service
