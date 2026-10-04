@@ -179,12 +179,13 @@ def _page_html(s: Source, cfg: Config, pages_by_id: dict | None = None, r=Render
     body = _inline_svgs(page.body, md_path.parent, confine=r.untrusted)
     main_cls = ' class="h2top"' if page.top == 2 else ""
     numbered = _flag(meta, "numbered", md_path) and s.kind == "document"
+    body_cls = " numbered" if numbered else ""
     front = f'<section class="front">{block}{toc}</section>' if s.kind == "document" else block
     return (f'<!doctype html><html lang="{htmlmod.escape(meta.get("lang", "en"))}"><head><meta charset="utf-8">'
             f"<title>{htmlmod.escape(re.sub(r'<[^>]+>', '', title_txt))}</title>"
             f'<base href="{r.url(md_path.parent).rstrip("/")}/">'
             f'<link rel="stylesheet" href="{r.url(theme() / "page.css")}"><style>{style}</style></head>'
-            f'<body class="{s.kind}{' numbered' if numbered else ''}">{front}<main{main_cls}>{body}</main></body></html>')
+            f'<body class="{s.kind}{body_cls}">{front}<main{main_cls}>{body}</main></body></html>')
 
 
 def _flag(meta: dict, key: str, md_path: Path) -> bool:
