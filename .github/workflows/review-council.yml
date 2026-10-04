@@ -1,0 +1,58 @@
+# publishing's review council: four reviewers from https://github.com/witt3rd/review-council,
+# pinned to one release by full commit SHA with the tag as a comment. The law they
+# cite is .github/review-council/principles.md (README "Law" points there), read from
+# each PR's base commit. Each sets a `<Reviewer> verdict` status on the PR head; the
+# key is this repo's OPENROUTER_API_KEY secret. Bump the pin with a one-line PR.
+name: Review council
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions: {}
+
+# A newer push cancels the review of the older head: only the latest head's
+# verdicts count.
+concurrency:
+  group: review-council-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  steward:
+    # Drafts never run; a fork PR gets no secrets, so it is never called.
+    if: &same-repo-ready >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    uses: witt3rd/review-council/.github/workflows/steward.lock.yml@45ad2fe6c04854f3255e20dc18b8d1b5dd84b21d # v0.1.0 candidate
+    # Every permission the council's jobs use; a called workflow gets no more.
+    permissions: &council-permissions
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    with: &council-inputs
+      model: anthropic/claude-sonnet-5
+    secrets: &council-secrets
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+  architect:
+    if: *same-repo-ready
+    uses: witt3rd/review-council/.github/workflows/architect.lock.yml@45ad2fe6c04854f3255e20dc18b8d1b5dd84b21d # v0.1.0 candidate
+    permissions: *council-permissions
+    with: *council-inputs
+    secrets: *council-secrets
+
+  inspector:
+    if: *same-repo-ready
+    uses: witt3rd/review-council/.github/workflows/inspector.lock.yml@45ad2fe6c04854f3255e20dc18b8d1b5dd84b21d # v0.1.0 candidate
+    permissions: *council-permissions
+    with: *council-inputs
+    secrets: *council-secrets
+
+  warden:
+    if: *same-repo-ready
+    uses: witt3rd/review-council/.github/workflows/warden.lock.yml@45ad2fe6c04854f3255e20dc18b8d1b5dd84b21d # v0.1.0 candidate
+    permissions: *council-permissions
+    with: *council-inputs
+    secrets: *council-secrets

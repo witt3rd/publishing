@@ -142,6 +142,13 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   command or a changed output. Patch only for fixes that leave every rebuilt file as it was. Cut a new tag,
   never move one.
 
+## Law
+
+The rules every change to this repo keeps (reproducible builds, user content treated as hostile, one
+look, immutable tags with rendering changes as minor bumps, the documented command contracts) are
+written once, in [.github/review-council/principles.md](.github/review-council/principles.md). The
+review council reads them from each PR's base commit and cites them; so should a person.
+
 ## Video
 
 A folder `docs/<kind>/<topic>-vN/` with `video.html` builds `<topic>-vN.mp4` beside it. `video.html` is a
