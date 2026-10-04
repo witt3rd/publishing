@@ -1,5 +1,5 @@
 """publishing new | build | check | publish | setup | compare | html | render-html | render-md | pdf-pages
-| convert (office2pdf, pandoc) | extract | media | a11y | images
+| convert (office2pdf, pandoc) | extract | media | a11y | images | pdf
 
 Exit codes (the service contract, README "Services"): 0 done; 1 a source failed its build or a
 check found a difference; 2 usage or configuration error; 3 the toolchain is not installed or broken.
@@ -18,7 +18,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert, extract, images, media, pandoc, renderhtml
+from . import __version__, convert, extract, images, media, pandoc, pdftools, renderhtml
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -402,6 +402,11 @@ def main(argv=None) -> int:
                        description="Exit codes: 0 done (stdout: the output's path); 1 the image was unreadable or a "
                        "limit (time, pixels, bytes) was hit; 2 usage; 3 Pillow is not installed. No network.")
     images.add_arguments(p)
+
+    p = sub.add_parser("pdf", help="PDFs through pypdf: merge, pages, strip",
+                       description="Exit codes: 0 done (stdout: the output's path); 1 a PDF was unreadable or a "
+                       "limit (time, pages, bytes) was hit; 2 usage; 3 pypdf is not installed. No network.")
+    pdftools.add_arguments(p)
 
     a = ap.parse_args(argv)
     if a.cmd == "setup":

@@ -12,7 +12,7 @@
 # Pinned: the base images by digest, the Python tool by uv.lock, office2pdf by version and sha256 in
 # src/publishing/convert.py (`publishing setup --convert` checks both checksums). In an existing
 # Alpine image (the venue's node:22-alpine) the same two steps are, with python3 from apk:
-#   uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.9.0'
+#   uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.10.0'
 #   publishing setup --convert --bin-dir /usr/local/bin
 FROM ghcr.io/astral-sh/uv:0.12.22@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc AS uv
 

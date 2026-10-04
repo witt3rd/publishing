@@ -151,6 +151,25 @@ jobs:
           docker run --rm --network none --read-only --tmpfs /tmp -v "$PWD/work:/work" publishing-images:run thumbnail in.jpg -o out.png --size 128
           test "$(head -c 4 work/out.png | tail -c 3)" = "PNG"
 
+  pdf:
+    name: pdf profile in a container, with no network
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f Dockerfile.pdf --target test -t publishing-pdf:ci .
+      - run: docker run --rm --network none publishing-pdf:ci
+      - run: docker build -f Dockerfile.pdf -t publishing-pdf:run .
+      - name: the image merges files it is given, read-only, and nothing reaches the network
+        run: |
+          set -euo pipefail
+          mkdir -p work && chmod 777 work
+          docker run --rm --entrypoint python -v "$PWD/work:/work" publishing-pdf:run \
+            -c "from pypdf import PdfWriter
+          for n in 'a', 'b':
+              w = PdfWriter(); w.add_blank_page(200, 100); w.write(f'/work/{n}.pdf')"
+          docker run --rm --network none --read-only --tmpfs /tmp -v "$PWD/work:/work" publishing-pdf:run merge a.pdf b.pdf -o out.pdf
+          test "$(head -c 5 work/out.pdf)" = "%PDF-"
+
   render-golden:
     name: render golden fixtures in the toolbox image, with no network
     runs-on: ubuntu-latest
