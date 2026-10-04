@@ -3,6 +3,7 @@ on:
   push: { branches: [main] }
   pull_request: {}
   workflow_dispatch: {}
+  schedule: [{ cron: "17 6 * * *" }]   # a bump merged and never tagged keeps failing here
 permissions: { contents: read }
 jobs:
   test:
@@ -24,10 +25,18 @@ jobs:
       - run: uv run pytest -q
       - run: uv run publishing check
 
+  tags:
+    name: every released version (pyproject bump) has its tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0, fetch-tags: true }
+      - run: tools/tag-check.sh
+
   action:
     name: the GitHub Action checks a scratch repo (passes, then fails on a stale PDF)
     runs-on: ubuntu-latest
-    env: { PUBLISHING_FROM: "${{ github.workspace }}" }   # this checkout, not the pinned tag (0.8.0 is not tagged yet)
+    env: { PUBLISHING_FROM: "${{ github.workspace }}" }   # this checkout, not the pinned tag 
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.2.0
