@@ -112,7 +112,7 @@ def test_a_persons_markdown_cannot_read_files_or_run_tex(tmp_path):
 def test_markdown_to_pdf(tmp_path):
     out = pd.convert(_write(tmp_path, "note.md"), tmp_path / "note.pdf")
     data = out.read_bytes()
-    assert data.startswith(b"%PDF-") and (b"/Type /Page" in data or b"/Type/Page" in data)
+    assert data.startswith(b"%PDF-") and data.rstrip().endswith(b"%%EOF")
     assert 1000 < len(data) < 1_000_000
 
 

@@ -68,6 +68,7 @@ def test_markdown_to_pdf_runs_a_hardened_deterministic_pandoc(fixture):
     args = seen["args"]
     assert "--sandbox" in args
     assert args[args.index("-f") + 1] == "markdown-raw_tex-raw_attribute"
+    assert r"header-includes=\pdftrailerid{}" in args
     assert "--pdf-engine=pdflatex" in args and "--pdf-engine-opt=-no-shell-escape" in args
     env = seen["env"]
     assert env["SOURCE_DATE_EPOCH"] == "0" and env["FORCE_SOURCE_DATE"] == "1"

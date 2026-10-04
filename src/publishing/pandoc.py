@@ -14,8 +14,8 @@ reading or writing outside the working folders). The same limits as the Office e
 limit and an output cap, a fresh temporary folder that is always removed, an existing output never
 overwritten.
 
-Deterministic: SOURCE_DATE_EPOCH (the caller's, else 0) with FORCE_SOURCE_DATE=1 fixes every date and
-the PDF's trailer id, so the same source and the same image make the same bytes.
+Deterministic: SOURCE_DATE_EPOCH (the caller's, else 0) with FORCE_SOURCE_DATE=1 fixes every date, and
+`\\pdftrailerid{}` drops the PDF's trailer id (it hashes the temporary folder's path), so the same source and the same image make the same bytes.
 """
 import os
 import platform
@@ -112,7 +112,9 @@ def command(bin_: Path, src: Path, output: Path, to: str, title: str = "") -> li
     cmd = [str(bin_), "--sandbox", "-f", READERS[src.suffix.lower()], "-o", str(output)]
     if to == "pdf":
         cmd += ["-t", "pdf", f"--pdf-engine={PDF_ENGINE}", "--pdf-engine-opt=-no-shell-escape",
-                "--pdf-engine-opt=-halt-on-error", "-V", "geometry:margin=1in"]
+                "--pdf-engine-opt=-halt-on-error", "-V", "geometry:margin=1in",
+                # pdfTeX's trailer /ID hashes the working directory, which is a random temporary folder
+                "-V", r"header-includes=\pdftrailerid{}"]
     elif to == "html":
         cmd += ["-t", "html5", "-s", "--metadata", f"pagetitle={title or src.stem}"]
     else:
