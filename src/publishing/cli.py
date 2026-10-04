@@ -254,7 +254,9 @@ def cmd_html(a) -> int:
     try:
         r = render_html(Path(a.source), out, paper=a.paper, limits=limits)
     except UserContentError as e:
-        sys.exit(f"publishing: {e}")
+        from .renderhtml import NotReady, _classify  # exit 3 when the host cannot sandbox, as render-html does
+        print(f"publishing: {e}", file=sys.stderr)
+        return 3 if isinstance(_classify(e), NotReady) else 1
     if a.json:
         print(json.dumps({"output": str(out), "pages": r.pages, "blocked": r.blocked, "sandboxed": r.sandboxed,
                           "netns": r.netns}))
