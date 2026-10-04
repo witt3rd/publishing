@@ -166,3 +166,17 @@ jobs:
           docker run --rm --user 65532:65532 --network none -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" \
             publishing:ci convert /in/fixture.docx -o /out/fixture.pdf
           test "$(head -c 5 pdf/fixture.pdf)" = "%PDF-"
+      - name: the toolbox's extract, and the default flags refuse the sandbox with exit 3 (docs/service.md)
+        run: |
+          set -u
+          docker run --rm --user 65532:65532 --network none --read-only --tmpfs /tmp \
+            -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" publishing:ci extract /in/page.html -o /out/page.md
+          grep -q 'Hello from a person' pdf/page.md
+          for c in "html /in/page.html -o /out/d1.pdf" "render-html /in/page.html --pdf /out/d2.pdf"; do
+            rc=0
+            docker run --rm --user 65532:65532 --network none --read-only --tmpfs /tmp \
+              -v "$PWD/doc:/in:ro" -v "$PWD/pdf:/out" publishing:ci $c || rc=$?
+            test "$rc" = 3 || { echo "FAIL: '$c' exited $rc, wanted 3"; exit 1; }
+          done
+      - name: examples/service/run.sh checks the samples (decks and videos run trusted, not in user-content mode)
+        run: PUBLISHING_IMAGE=publishing:ci examples/service/run.sh check

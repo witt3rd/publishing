@@ -26,7 +26,9 @@ flags=(--rm --network none --user "$(id -u):$(id -g)" --cap-drop ALL
 case "$1" in
   # Chromium's sandbox needs unprivileged user namespaces: Docker's default seccomp profile
   # refuses them, so these commands take the one-rule profile (docs/user-content.md "Containers").
-  html|render-html|render-md|pdf-pages|build|check)
+  # `build` and `check` (your own decks, memos, videos) are not here: user-content mode refuses decks and
+  # videos, so they run trusted, in the same locked-down container.
+  html|render-html|render-md|pdf-pages)
     flags+=(--security-opt "seccomp=${SECCOMP:-$here/../../ci/seccomp-chromium.json}"
             -e PUBLISHING_USER_CONTENT=1) ;;
 esac
