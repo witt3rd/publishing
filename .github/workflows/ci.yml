@@ -27,6 +27,9 @@ jobs:
 
   tags:
     name: every released version (pyproject bump) has its tag
+    # A post-merge invariant: the tag exists only after the bump merges (release automation), so a
+    # version-bump PR can never satisfy it. Checked on main, nightly and by hand, not on pull_request.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
