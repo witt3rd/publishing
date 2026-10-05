@@ -339,6 +339,21 @@ turns a narration script into speech timed to a video's scenes. Install `publish
 - **Exit codes.** 0 done; 1 synthesis or the model download failed; 2 usage (no scenes, an output exists, no key for
   `--model`); 3 the extra or ffmpeg is missing.
 
+## Explainer template
+
+A repeatable narrated explainer (a minute or two: a title, numbers on screen, stacks of blocks, before/after bars) from one
+`script.md`. Copy [examples/explainer-template](examples/explainer-template) (`explain.py`, `build.sh`) beside your script.
+
+- **Script.** `# name`, optional `kicker: text`, then one `## scene-id` per scene: one `@component a | b | c` line (what
+  is on screen) and the narration lines under it. Components: `@title Headline | subline`; `@number Heading | 45x | label`;
+  `@stack Heading | top | *highlighted | bottom` (blocks top to bottom); `@bars Heading | unit | Before=90 | *After=2`
+  (`*` highlights; widths scale to the largest); `@points Heading | one | two`.
+- **Build.** `examples/explainer-template/build.sh SCRIPT_DIR [OUTDIR]` writes the narration script, runs `publishing narrate`
+  (voice as in Narration), generates the composition with each scene's start and duration from the speech timings, builds
+  the video and muxes the audio into `OUTDIR/NAME.mp4`. To commit the silent video instead, put the generated `video.html`
+  under `docs/video/NAME-vN/`. Anything the components cannot say: edit the generated `video.html`, or write the scene by hand.
+- **Worked example.** `hello-explainer-v1/script.md`; `tests/test_explainer.py` builds it (with stand-in timings) in CI.
+
 ## Media
 
 `publishing media audio|video|thumbnail|concat`, or from Python `publishing.media.audio / video /
