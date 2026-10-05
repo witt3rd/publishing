@@ -40,7 +40,6 @@ import urllib.request
 import wave
 from pathlib import Path
 
-KOKORO_ONNX = "0.6.1"  # the exact pin in pyproject.toml's `narrate` extra
 RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
 MODEL_FILES = {  # name -> sha256
     "kokoro-v1.0.onnx": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
@@ -168,19 +167,20 @@ def speak_openrouter(text: str, model: str, voice: str, speed: float = 1.0, key:
         body["speed"] = speed
     req = urllib.request.Request(ENDPOINT, json.dumps(body).encode(), {
         "Authorization": f"Bearer {key}", "Content-Type": "application/json"})
-    for attempt in range(tries):
+    attempt = 0
+    while True:  # each pass returns, raises, or sleeps and tries again
+        attempt += 1
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
                 return r.read(), r.headers.get("X-Generation-Id", "")
         except urllib.error.HTTPError as e:
             detail = e.read(400).decode("utf-8", "replace")
-            if e.code in (418, 429, 500, 502, 503, 504) and attempt + 1 < tries:
-                time.sleep(2 * (attempt + 1))
+            if e.code in (418, 429, 500, 502, 503, 504) and attempt < tries:
+                time.sleep(2 * attempt)
                 continue
             raise NarrateError(f"{model}: HTTP {e.code} {' '.join(detail.split())}") from None
         except OSError as e:
             raise NarrateError(f"{model}: request failed ({e})") from None
-    raise NarrateError(f"{model}: no answer")
 
 
 def _decode(mp3: bytes):
@@ -189,8 +189,11 @@ def _decode(mp3: bytes):
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise NotInstalled("ffmpeg not found (needed to decode a --model voice)")
-    r = subprocess.run([ffmpeg, "-nostdin", "-loglevel", "error", "-i", "pipe:0", "-f", "s16le", "-ac", "1",
-                        "-ar", str(SAMPLE_RATE), "pipe:1"], input=mp3, capture_output=True, timeout=120)
+    try:
+        r = subprocess.run([ffmpeg, "-nostdin", "-loglevel", "error", "-i", "pipe:0", "-f", "s16le", "-ac", "1",
+                            "-ar", str(SAMPLE_RATE), "pipe:1"], input=mp3, capture_output=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise NarrateError("ffmpeg timed out decoding the speech") from None
     if r.returncode or not r.stdout:
         raise NarrateError("ffmpeg could not decode the speech: " + " ".join(r.stderr.decode(errors="replace").split())[:200])
     return np.frombuffer(r.stdout, dtype="<i2")
@@ -218,7 +221,8 @@ def synthesize(scenes, *, voice: str = VOICE, speed: float = 1.0, models: Path |
             samples, rate = kokoro.create(text, voice=voice, speed=speed, lang="en-us")
         except Exception as e:  # an unknown voice, a phonemizer failure: the call's failure, one line
             raise NarrateError(f"{sid}: {type(e).__name__}: {' '.join(str(e).split())[:300]}") from None
-        assert rate == SAMPLE_RATE
+        if rate != SAMPLE_RATE:
+            raise NarrateError(f"{sid}: Kokoro returned {rate} Hz, expected {SAMPLE_RATE}")
         out.append((sid, text, (np.clip(samples, -1, 1) * 32767).astype("<i2")))
     return out
 

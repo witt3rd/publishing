@@ -31,6 +31,11 @@ TeX Live (pdfLaTeX, for PDFs from pandoc), Debian's texlive-latex-base, texlive-
   texlive-fonts-recommended and lmodern in Dockerfile.pandoc. https://tug.org/texlive, free software under
   the licences of each package.
 
+Kokoro (narration), the 82M text-to-speech model by hexgrad, Apache-2.0, and kokoro-onnx by thewh1teagle, MIT,
+  run locally by `publishing narrate`. The model files are fetched at run time from
+  https://github.com/thewh1teagle/kokoro-onnx/releases (sha256 pinned in src/publishing/narrate.py); kokoro-onnx
+  is pinned in pyproject.toml and uv.lock.
+
 FFmpeg (video encoding), from the host or the container's Debian package; LGPL/GPL per build.
   https://ffmpeg.org
 
