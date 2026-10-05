@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent / "examples" / "explainer-template
 spec = importlib.util.spec_from_file_location("explain", ROOT / "explain.py")
 explain = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(explain)
-SCRIPT = (ROOT / "hello-explainer-v1" / "script.md").read_text()
+SCRIPT = (ROOT / "hello-explainer-v1" / "script.md").read_text(encoding="utf-8")
 
 
 def timings(seconds=1):  # a stand-in for narration.json: one second a scene
@@ -35,7 +35,7 @@ def test_compose_fills_every_scene_from_the_timings():
 def test_the_composition_builds_to_an_mp4(repo, renderer):
     folder = repo / "docs" / "notes" / "hello-explainer-v1"
     folder.mkdir()
-    (folder / "video.html").write_text(explain.compose(SCRIPT, timings()))
+    (folder / "video.html").write_text(explain.compose(SCRIPT, timings()), encoding="utf-8")
     cfg = load(folder)
     assert build(resolve(folder, cfg), cfg, renderer) == "built"
     assert (repo / "docs" / "notes" / "hello-explainer-v1.mp4").stat().st_size > 0

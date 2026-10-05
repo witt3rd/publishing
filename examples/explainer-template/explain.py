@@ -77,7 +77,7 @@ def body(kind, a, kicker):
     if kind == "bars":  # @bars Heading | unit | Before=90 | *After=2   (widths scale to the largest)
         rows = [(b.lstrip("*"), b.startswith("*")) for b in a[2:]]
         pairs = [(r.partition("=")[0], float(r.partition("=")[2]), hot) for r, hot in rows]
-        top = max(v for _, v, _ in pairs)
+        top = max(max(v for _, v, _ in pairs), 1)
         out = "".join(
             f'<div class="bar"><div class="lbl">{e(n)}</div><div class="fill grow{" hot" if hot else ""}" '
             f'style="--at: {.4 + .6 * i:g}s; width: {max(v / top * 1000, 8):.0f}px"></div>'
@@ -109,9 +109,9 @@ def compose(text, timings):
 
 def main(argv):
     if len(argv) == 2 and argv[0] == "narration":
-        sys.stdout.write(narration(open(argv[1]).read()))
+        sys.stdout.reconfigure(encoding="utf-8"); sys.stdout.write(narration(open(argv[1], encoding="utf-8").read()))
     elif len(argv) == 3 and argv[0] == "compose":
-        sys.stdout.write(compose(open(argv[1]).read(), json.load(open(argv[2]))))
+        sys.stdout.reconfigure(encoding="utf-8"); sys.stdout.write(compose(open(argv[1], encoding="utf-8").read(), json.load(open(argv[2], encoding="utf-8"))))
     else:
         sys.exit(__doc__)
 
