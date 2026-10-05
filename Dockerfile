@@ -1,8 +1,8 @@
 # The publishing toolbox image: one CLI (`publishing`, the entrypoint) and its pinned renderers,
 # for services and CI that render headless. The contract is in README "Services".
 #
-#   docker build -t publishing:0.10.0 .
-#   docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.10.0 build docs/samples/house-style-video-v1
+#   docker build -t publishing:0.11.0 .
+#   docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.11.0 build docs/samples/house-style-video-v1
 #
 # Pinned: the base images by digest, the Python tool and its Node by uv.lock, HyperFrames by
 # src/publishing/hyperframes/package-lock.json, Chromium by Playwright (in uv.lock), the fonts

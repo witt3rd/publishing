@@ -237,3 +237,71 @@ def test_cli_merge(tmp_path):
 def test_cli_exit_codes(five, tmp_path, args, code):
     r = cli(*[a.format(five=five) for a in args], cwd=tmp_path)
     assert r.returncode == code and r.stdout == "" and r.stderr.startswith("publishing:")
+
+
+# --- split ------------------------------------------------------------------------------------
+
+def test_split_every_n_pages(tmp_path):
+    src = make(tmp_path / "doc.pdf", [(101 + i, 50) for i in range(5)])
+    parts = pdftools.split(src, tmp_path / "parts", every=2)
+    assert [p.name for p in parts] == ["doc-001.pdf", "doc-002.pdf", "doc-003.pdf"]
+    assert [widths(p) for p in parts] == [[101, 102], [103, 104], [105]]
+
+
+def test_split_default_is_one_page_each_and_cleans(tmp_path):
+    src = annotated(tmp_path / "a.pdf")
+    (part,) = pdftools.split(src, tmp_path / "o")
+    r = PdfReader(str(part))
+    assert r.metadata.get("/Title") is None and r.metadata["/Producer"] == "publishing"
+    assert "/Annots" in r.pages[0] and len(r.pages[0]["/Annots"]) == 1  # only the URI link stays
+
+
+def test_split_deterministic(tmp_path):
+    src = make(tmp_path / "d.pdf", [(101, 50), (102, 50)])
+    a = pdftools.split(src, tmp_path / "x")
+    b = pdftools.split(src, tmp_path / "y")
+    assert [p.read_bytes() for p in a] == [p.read_bytes() for p in b]
+
+
+def test_split_never_overwrites_and_writes_nothing(tmp_path):
+    src = make(tmp_path / "d.pdf", [(101, 50), (102, 50)])
+    out = tmp_path / "o"
+    out.mkdir()
+    (out / "d-002.pdf").write_bytes(b"mine")
+    with pytest.raises(pdftools.UsageError):
+        pdftools.split(src, out)
+    assert sorted(p.name for p in out.iterdir()) == ["d-002.pdf"]
+    assert (out / "d-002.pdf").read_bytes() == b"mine"
+    assert [p.name for p in tmp_path.iterdir() if p.name.startswith("publishing-pdf-")] == []
+
+
+def test_split_limits_leave_nothing(tmp_path):
+    src = make(tmp_path / "d.pdf", [(101, 50)] * 3)
+    with pytest.raises(pdftools.PdfError):
+        pdftools.split(src, tmp_path / "o", max_pages=2)
+    with pytest.raises(pdftools.PdfError):
+        pdftools.split(src, tmp_path / "o", max_bytes=10)
+    assert not (tmp_path / "o").exists() or not list((tmp_path / "o").iterdir())
+
+
+def test_split_refusals(tmp_path):
+    src = make(tmp_path / "d.pdf")
+    with pytest.raises(pdftools.UsageError):
+        pdftools.split(src, tmp_path / "o.pdf")
+    with pytest.raises(pdftools.UsageError):
+        pdftools.split(src, tmp_path / "o", every=0)
+    (tmp_path / "f").write_text("x")
+    with pytest.raises(pdftools.UsageError):
+        pdftools.split(src, tmp_path / "f")
+    (tmp_path / "bad.pdf").write_bytes(b"nope")
+    with pytest.raises(pdftools.PdfError):
+        pdftools.split(tmp_path / "bad.pdf", tmp_path / "o")
+
+
+def test_split_command(tmp_path):
+    src = make(tmp_path / "d.pdf", [(101, 50), (102, 50), (103, 50)])
+    r = cli("split", str(src), "--every", "2", "-o", str(tmp_path / "o"))
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split() == [str(tmp_path / "o" / "d-001.pdf"), str(tmp_path / "o" / "d-002.pdf")]
+    assert cli("split", str(src), "-o", str(tmp_path / "o")).returncode == 2
+    assert cli("split", str(src), "--every", "0", "-o", str(tmp_path / "p")).returncode == 2
