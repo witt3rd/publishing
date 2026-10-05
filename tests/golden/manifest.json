@@ -53,6 +53,39 @@
     },
     "toolchain": "markitdown 0.1.8; pypdfium2 5.13.0"
   },
+  "images": {
+    "outputs": {
+      "convert.jpg": {
+        "bytes": 1573,
+        "sha256": "e13e2f32339ed0615f5600fe97ce90e44e7a08b69e76fc44a949310c32f87637"
+      },
+      "convert.webp": {
+        "bytes": 374,
+        "sha256": "0e81368055b94db65def584f99a17d4b0b7c9f7dab4c47fb8ccf88f19684722f"
+      },
+      "resize-h32.jpg": {
+        "bytes": 1413,
+        "sha256": "f1d600ee42809e8a94402b6a9ff19583cf067259f2510b44ec9e7d01d689fe13"
+      },
+      "resize-w48.png": {
+        "bytes": 2119,
+        "sha256": "bb64622d63ff775aefb437fcf4081dcc2fe45512aa9eb9e18b177e6e665ede8d"
+      },
+      "strip-rotated.jpg": {
+        "bytes": 1314,
+        "sha256": "6f0583fffadad17204bb8291bc1a773f6683d3cd3c071e1b4163ecb05c30b332"
+      },
+      "thumbnail-64.png": {
+        "bytes": 5176,
+        "sha256": "d74a3e324a22fbd80861c477915e4191710eb64951a53d46c1d433d090690700"
+      },
+      "webp-to.png": {
+        "bytes": 5488,
+        "sha256": "625462fb895c35891eede8d1b8dbb38caee787fecb3aa0a526a5f5f7cb4f0720"
+      }
+    },
+    "toolchain": "Pillow 12.3.0"
+  },
   "media": {
     "outputs": {
       "audio-64k.mp3": {
@@ -150,6 +183,27 @@
       }
     },
     "toolchain": "pandoc 3.12; pdfTeX 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian)"
+  },
+  "pdf": {
+    "outputs": {
+      "merge.pdf": {
+        "bytes": 938,
+        "sha256": "cb6dcd03497389b8faebcf07c83f6261be59055a0c13cb8201c3999204969f20"
+      },
+      "pages-1-and-3.pdf": {
+        "bytes": 698,
+        "sha256": "3a1e9e144dc8887022438275fde68f3bda6eef0abb5829c8e6c4bc772ffc7920"
+      },
+      "pages-reorder.pdf": {
+        "bytes": 698,
+        "sha256": "b0a3fb2a9ff951d64cf2e1a58cea0771e106c01c93586f1d05e2fbbb556cfeed"
+      },
+      "strip.pdf": {
+        "bytes": 818,
+        "sha256": "c28ec4146e0b1c2c0837ba67918100a70ad7eb25b76f5085e4416250be7126f9"
+      }
+    },
+    "toolchain": "pypdf 6.19.0"
   },
   "render": {
     "outputs": {

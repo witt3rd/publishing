@@ -4,7 +4,7 @@
 #   docker build -f Dockerfile.images -t publishing-images .
 #   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing-images thumbnail in.jpg -o out.png --size 128
 #
-# The `test` stage runs the images tests (CI: with no network):
+# The `test` stage runs the images tests and golden fixtures (CI: with no network):
 #
 #   docker build -f Dockerfile.images --target test -t publishing-images-test .
 #   docker run --rm --network none publishing-images-test
@@ -49,7 +49,8 @@ COPY tests ./tests
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra images --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_images.py"]
+ENV GOLDEN_PROFILE=images
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_images.py", "tests/test_golden.py"]
 CMD []
 
 FROM images
