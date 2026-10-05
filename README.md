@@ -18,32 +18,35 @@ as a profile (an extra), or several:
 
 ```sh
 # render: decks, memos and documents (Playwright and the pinned Chromium)
-uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.11.0'   # or run through uvx
+uv tool install 'publishing[render] @ git+https://github.com/witt3rd/publishing@v0.12.0'   # or run through uvx
 publishing setup                    # the pinned Chromium, into the user cache
 
 # video: the render profile plus the pinned Node; ffmpeg comes from the host, or use the image (below)
-uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[video] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 publishing setup --video            # also the pinned HyperFrames
 
 # convert: Office files to PDF (the standard library and office2pdf; no Playwright, no Chromium)
-uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[convert] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 publishing setup --convert          # the pinned office2pdf, checksummed, into the user cache
 
 # pandoc: markdown, html, docx and odt to pdf, docx and html (the standard library and pandoc; PDFs also need TeX)
-uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 publishing setup --pandoc           # the pinned pandoc, checksummed, into the user cache
 
 # extract: documents to markdown (markitdown, exact pin; no Playwright, no Chromium; glibc, not Alpine)
-uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[extract] @ git+https://github.com/witt3rd/publishing@v0.12.0'
+
+# narrate: a script to speech timed to scenes, local Kokoro or an OpenRouter voice (kokoro-onnx, exact pin)
+uv tool install 'publishing[narrate] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 
 # media: audio and video through ffmpeg (the standard library only; ffmpeg on the PATH, or use the media image)
-uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[media] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 
 # images: resize, convert, thumbnails and metadata strip through Pillow (exact pin; no Playwright, no Chromium)
-uv tool install 'publishing[images] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[images] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 
 # pdf: merge, select pages and strip PDFs through pypdf (exact pin; no Playwright, no Chromium)
-uv tool install 'publishing[pdf] @ git+https://github.com/witt3rd/publishing@v0.11.0'
+uv tool install 'publishing[pdf] @ git+https://github.com/witt3rd/publishing@v0.12.0'
 ```
 
 With no extra the install is the convert profile's code alone: a render command there exits 3 and
@@ -65,6 +68,7 @@ publishing build --user-content [SOURCE...]     # build untrusted memos/document
 publishing convert report.docx [-o report.pdf]  # an Office file to a PDF (the convert profile; see Convert)
 publishing convert notes.md -o notes.docx       # markdown, html, docx or odt to pdf, docx or html (the pandoc profile)
 publishing extract report.pdf [-o report.md]    # a document to markdown (the extract profile; see Extract)
+publishing narrate script.txt [-o DIR] [--model M]   # narration speech timed to scenes (the narrate profile; see Narration)
 publishing media audio|video|thumbnail|concat ...   # ffmpeg transcodes, frames, joins (the media profile; see Media)
 publishing images resize|convert|thumbnail|strip ...   # resize, re-encode, thumbnails, metadata strip (the images profile; see Images)
 publishing pdf merge|pages|strip|split ...   # join PDFs, keep pages, drop metadata and active content, split into parts (the pdf profile; see PDF tools)
@@ -92,7 +96,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   heading levels the contents list; 2 by default, `false` for none).
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
-- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.11.0"`), the `project`, the
+- **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.12.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
   `docs/Spec.pdf`). Its full schema is the docstring of `src/publishing/config.py`. A command run with a
@@ -104,7 +108,7 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
 - **Check** compares words and page count for a PDF, not bytes (Chromium's PDF bytes differ run to run);
   for an MP4 see Video.
 - **CI.** A repo proves its committed PDFs and MP4s rebuild from source with the GitHub Action in this
-  repo. Put `docs/report.toml` (`publishing = "0.11.0"`, `project = "..."`) and this in
+  repo. Put `docs/report.toml` (`publishing = "0.12.0"`, `project = "..."`) and this in
   `.github/workflows/reports.yml` (the same file is `ci/reports.yml`):
 
   ```yaml
@@ -116,12 +120,12 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
       runs-on: ubuntu-latest
       steps:
         - uses: actions/checkout@v7
-        - uses: witt3rd/publishing@v0.11.0   # with: { config: path/to/report.toml } if it is elsewhere
+        - uses: witt3rd/publishing@v0.12.0   # with: { config: path/to/report.toml } if it is elsewhere
   ```
 
   The action installs uv, reads the `publishing` pin from report.toml, runs `publishing check` through `uvx`
   at that tag (the video extra, HyperFrames and ffmpeg when a `video.html` exists, else the render extra),
-  and fails on a missing, stale or orphan file. The `@v0.11.0` on `uses:` only selects `ci/check.sh`; the
+  and fails on a missing, stale or orphan file. The `@v0.12.0` on `uses:` only selects `ci/check.sh`; the
   version that builds is the pin, so bump the pin and commit the rebuilt files together. Add
   `with: { lfs: true }` to checkout if the files are in LFS. Run it by hand with `ci/check.sh [CONFIG]`
   (`PUBLISHING_DEPS=0` off Debian, `PUBLISHING_FROM=<path or git+url>` to test an unreleased tree);
@@ -129,8 +133,8 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
 - **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright,
   HyperFrames) is a minor bump; a repo adopts it by bumping its pin and running `publishing check`.
 - **Adopter pins.** Pin the tool by the `publishing` version in `report.toml` (a release tag, without the
-  `v`); that is what builds. Pin the action in `uses:` by tag (`@v0.11.0`) or, for supply-chain strictness, by
-  full 40-character commit SHA (`@<sha> # v0.11.0`); a branch name or short SHA is not a pin. The `uses:`
+  `v`); that is what builds. Pin the action in `uses:` by tag (`@v0.12.0`) or, for supply-chain strictness, by
+  full 40-character commit SHA (`@<sha> # v0.12.0`); a branch name or short SHA is not a pin. The `uses:`
   ref only selects `ci/check.sh`, so keep it at the same release as the `report.toml` pin. To pin a commit
   that is not a release, run `PUBLISHING_FROM=git+https://github.com/witt3rd/publishing@<full-sha> ci/check.sh`.
 - **Rebuilding a report.** Run `publishing build docs/<kind>/<topic>-vN` with the pinned version (it re-runs
@@ -232,11 +236,11 @@ spreadsheet to docx, `.txt`) is exit 2.
   file is a converter.
 - **The call.** `office2pdf SRC -o OUT` into the temporary folder, moved into place when it succeeds.
 - **Containers.** The toolbox image (`Dockerfile`, Services) carries the glibc build at
-  `/usr/local/bin/office2pdf`: `docker run … publishing:0.11.0 convert /in/report.docx -o /out/report.pdf`.
+  `/usr/local/bin/office2pdf`: `docker run … publishing:0.12.0 convert /in/report.docx -o /out/report.pdf`.
   `Dockerfile.convert` is the convert profile alone on Alpine (musl), entrypoint `publishing convert`;
   its `test` stage runs the convert tests and the real conversion, which CI runs with `--network none`.
   In an existing Alpine image (with `python3` from apk):
-  `uv tool install 'publishing[convert] @ git+…@v0.11.0' && publishing setup --convert --bin-dir /usr/local/bin`.
+  `uv tool install 'publishing[convert] @ git+…@v0.12.0' && publishing setup --convert --bin-dir /usr/local/bin`.
 
 ### Any to any (pandoc)
 
@@ -304,11 +308,36 @@ spreadsheet to docx, `.txt`) is exit 2.
   (markitdown has no RTF reader; Outlook needs another dependency): exit 2.
 - **Environment.** `TMPDIR` for the temporary folder. Nothing else; no keys, no endpoints.
 - **Containers.** The toolbox image carries the extract extra:
-  `docker run … publishing:0.11.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
+  `docker run … publishing:0.12.0 extract /in/report.pdf -o /out/report.md`. `Dockerfile.extract` is the
   extract profile alone, entrypoint `publishing extract`; its `test` stage runs the extract tests, which
   CI runs with `--network none`. **Not Alpine:** markitdown needs onnxruntime (through magika), which
   publishes no musl wheel, so `uv sync --extra extract` fails on `python:3.13-alpine`; the image is
   Debian slim (glibc). Spire's venue: [docs/spire-extract-migration.md](docs/spire-extract-migration.md).
+
+## Narration
+
+`publishing narrate SCRIPT [-o DIR] [--model MODEL] [--voice V] [--speed S] [--gap SECONDS] [--model-dir DIR]`
+turns a narration script into speech timed to a video's scenes. Install `publishing[narrate]`.
+
+- **Script.** Plain text: `## scene-id` opens a scene and the lines under it are what is said; `#` lines are
+  comments. The ids are those of the video's `<section id="scene-...">`. Without headings each paragraph is a scene.
+- **Out.** `NAME.wav` (24 kHz mono, each scene followed by `--gap` seconds of silence, default 0.6) and `NAME.json`
+  with each scene's `start`, `speech` and `duration` in seconds; the durations tile the wav. Neither is ever
+  overwritten. Put each scene's `start` and `duration` in its `data-start` and `data-duration`.
+- **Voices.** The default is Kokoro, local, free, no key: `kokoro-onnx` is pinned in the extra and the two model
+  files (about 350 MB) are fetched once into `~/.cache/publishing/kokoro`, checked against a pinned sha256 (or give
+  `--model-dir`). `--model` selects an OpenRouter speech model instead: `microsoft/mai-voice-2.1-flash`,
+  `fish-audio/s2.1-pro`, `fish-audio/s2.1-pro-free:free`, `deepgram/flux-tts`, `bytedance-seed/seed-audio-1-0`, or
+  any other id (`--voice` if it needs one). It reads `OPENROUTER_API_KEY` from the environment only, for example
+  `doppler run -- publishing narrate script.txt --model microsoft/mai-voice-2.1-flash`, and needs ffmpeg to decode.
+  The script text is sent to OpenRouter; use Kokoro for text that must stay local. List prices per minute of speech
+  (about 15 characters a second): fish-audio s2.1-pro and mai-voice-2.1-flash about 1 to 2 cents, flux-tts about 4,
+  the free fish model nothing, seed-audio priced per generated second.
+- **Worked example.** [examples/narration/caching-explainer-v1](examples/narration/caching-explainer-v1): the script,
+  the video as a template and `build.sh`, which narrates (MAI-Voice when a key is set, else Kokoro), fits the scenes
+  to the speech, builds the video and muxes the audio. Sources only; the MP4 is not committed.
+- **Exit codes.** 0 done; 1 synthesis or the model download failed; 2 usage (no scenes, an output exists, no key for
+  `--model`); 3 the extra or ffmpeg is missing.
 
 ## Media
 
@@ -472,10 +501,10 @@ Adopting this as a service from another repo (image, entry points, pinning, Alpi
 The CLI is the one entry for people, agents, CI and services. A service calls it headless in the image:
 
 ```sh
-docker build -t publishing:0.11.0 .        # from this repo, at the tag
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.11.0 build docs/videos/topic-v1
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.11.0 check
-docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.11.0 \
+docker build -t publishing:0.12.0 .        # from this repo, at the tag
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.12.0 build docs/videos/topic-v1
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/work" publishing:0.12.0 check
+docker run --rm --user "$(id -u):$(id -g)" --network none -v /in:/in:ro -v /out:/out publishing:0.12.0 \
   build /in/topic-v1 -o /out/topic-v1.mp4
 ```
 

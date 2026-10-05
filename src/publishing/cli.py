@@ -18,7 +18,7 @@ import tempfile
 from importlib import resources
 from pathlib import Path
 
-from . import __version__, convert, extract, images, media, pandoc, pdftools, renderhtml
+from . import __version__, convert, extract, images, media, narrate, pandoc, pdftools, renderhtml
 from .config import ConfigError, load
 
 # The top-level modules the render extra (pyproject.toml) installs.
@@ -407,6 +407,11 @@ def main(argv=None) -> int:
                        description="Exit codes: 0 done (stdout: the output's path); 1 a PDF was unreadable or a "
                        "limit (time, pages, bytes) was hit; 2 usage; 3 pypdf is not installed. No network.")
     pdftools.add_arguments(p)
+
+    p = sub.add_parser("narrate", help="a narration script to speech timed to scenes, through local Kokoro",
+                       description="Exit codes: 0 done (stdout: the wav and json paths); 1 synthesis failed or the model "
+                       "did not verify; 2 usage; 3 the narrate extra is not installed. The model is fetched once.")
+    narrate.add_arguments(p)
 
     a = ap.parse_args(argv)
     if a.cmd == "setup":

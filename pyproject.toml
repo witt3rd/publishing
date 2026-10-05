@@ -1,6 +1,6 @@
 [project]
 name = "publishing"
-version = "0.11.0"
+version = "0.12.0"
 description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, documents to PDF, docx and html"
 readme = "README.md"
 license = "MIT"
@@ -46,6 +46,10 @@ pandoc = []
 # magika) is pinned to a release with wheels for Python 3.11-3.14; it has no musl wheel, so this profile
 # is glibc only (README "Extract").
 extract = ["markitdown[pdf,docx,pptx,xlsx]==0.1.8", "onnxruntime==1.30.0"]
+
+# Narration: local text to speech through Kokoro (kokoro-onnx, exact pin; Apache-2.0 model, fetched once and
+# checksummed by src/publishing/narrate.py). No account, no key (README "Narration").
+narrate = ["kokoro-onnx==0.6.1", "numpy>=2.0.2"]
 
 [project.scripts]
 publishing = "publishing.cli:main"

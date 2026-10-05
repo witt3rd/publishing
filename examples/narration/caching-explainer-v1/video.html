@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- A caching explainer, narrated. A template: build.sh fills the scene start and duration fields from the
+     narration.json that `publishing narrate` wrote, so any voice fits. Build: ./build.sh -->
+<html lang="en">
+<head><meta charset="utf-8"><title>caching-explainer-v1</title>
+<style>
+  .flow > .card { padding: 30px 26px; }
+  .flow > .card h3 { font-size: 36px; }
+  .flow > .card p { font-size: 26px; }
+  .caption { margin-top: 70px; text-align: center; font-size: 30px; color: var(--ink2); }
+  .big { font-size: 34px; line-height: 1.5; color: #e6e7f0; margin-top: 50px; max-width: 1500px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="root" data-no-timeline data-width="1920" data-height="1080"
+     data-fps="30" data-start="0" data-duration="{{duration}}">
+
+  <section id="scene-title" class="slide title clip" data-start="{{scene-title.start}}" data-duration="{{scene-title.duration}}" data-track-index="0">
+    <div class="kicker">Explainer · caching</div>
+    <h1 class="rise" style="--at: .2s">A copy kept close, so the next ask is fast</h1>
+    <h2 class="rise" style="--at: .8s">A cache saves an answer near the person asking, so nobody waits for the slow way twice.</h2>
+    <div class="rule"></div><div class="foot"><span>Worked example of publishing narrate</span><span>1 / 6</span></div>
+  </section>
+
+  <section id="scene-hit" class="slide clip" data-start="{{scene-hit.start}}" data-duration="{{scene-hit.duration}}" data-track-index="0">
+    <div class="kicker">A hit</div>
+    <h1>Look in the cache first</h1>
+    <div class="body middle">
+      <div class="flow">
+        <div class="card pop" style="width: 330px"><h3>Request</h3><p>someone asks</p></div>
+        <div class="arrow grow" style="--at: .8s"><span>look up</span></div>
+        <div class="card pop" style="--at: 1.4s; width: 360px; background: var(--accent-soft); border-color: var(--accent)">
+          <h3 style="color: var(--accent)">Cache</h3><p>the answer is here</p></div>
+        <div class="arrow grow" style="--at: 2.4s"><span>in a moment</span></div>
+        <div class="card pop" style="--at: 3s; width: 330px"><h3>Answer</h3><p>a hit</p></div>
+      </div>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Caching</span><span>2 / 6</span></div>
+  </section>
+
+  <section id="scene-miss" class="slide clip" data-start="{{scene-miss.start}}" data-duration="{{scene-miss.duration}}" data-track-index="0">
+    <div class="kicker">A miss</div>
+    <h1>No copy: do the slow work, then keep one</h1>
+    <div class="body middle">
+      <div class="flow">
+        <div class="card pop" style="width: 300px"><h3>Request</h3><p>someone asks</p></div>
+        <div class="arrow grow" style="--at: .8s"><span>not found</span></div>
+        <div class="card pop" style="--at: 1.4s; width: 330px"><h3>Source</h3><p>the slow way</p></div>
+        <div class="arrow grow" style="--at: 2.4s"><span>store a copy</span></div>
+        <div class="card pop" style="--at: 3s; width: 330px; background: var(--accent-soft); border-color: var(--accent)">
+          <h3 style="color: var(--accent)">Cache</h3><p>ready for next time</p></div>
+      </div>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Caching</span><span>3 / 6</span></div>
+  </section>
+
+  <section id="scene-evict" class="slide clip" data-start="{{scene-evict.start}}" data-duration="{{scene-evict.duration}}" data-track-index="0">
+    <div class="kicker">Limited room</div>
+    <h1>When it fills, the least recently used goes</h1>
+    <div class="body middle">
+      <p class="big rise" style="--at: .8s">A cache is small on purpose. Room is the price of speed.</p>
+      <p class="big rise" style="--at: 2.4s">Make space by dropping the copy that has gone unused the longest.</p>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Caching</span><span>4 / 6</span></div>
+  </section>
+
+  <section id="scene-stale" class="slide clip" data-start="{{scene-stale.start}}" data-duration="{{scene-stale.duration}}" data-track-index="0">
+    <div class="kicker">Going stale</div>
+    <h1>Every copy carries a time to live</h1>
+    <div class="body middle">
+      <p class="big rise" style="--at: .8s">The original changes, so a copy can become wrong.</p>
+      <p class="big rise" style="--at: 2.6s">When the time to live runs out, the copy is dropped and a fresh one is fetched.</p>
+    </div>
+    <div class="rule"></div><div class="foot"><span>Caching</span><span>5 / 6</span></div>
+  </section>
+
+  <section id="scene-close" class="slide clip" data-start="{{scene-close.start}}" data-duration="{{scene-close.duration}}" data-track-index="0">
+    <div class="kicker">In short</div>
+    <h1>Fast on a hit, small enough to afford, honest about expiry</h1>
+    <div class="rule"></div><div class="foot"><span>Caching</span><span>6 / 6</span></div>
+  </section>
+</div>
+</body>
+</html>

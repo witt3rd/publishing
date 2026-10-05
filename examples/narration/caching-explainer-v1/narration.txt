@@ -1,0 +1,18 @@
+# Narration for the caching explainer. One `## scene-id` per scene of video.html.
+## scene-title
+Caching, in one minute. A cache keeps a copy of an answer close at hand, so the next person who asks does not wait for the slow way.
+
+## scene-hit
+When a request arrives, we look in the cache first. If the answer is there, that is a hit, and it comes back in a moment.
+
+## scene-miss
+If the answer is not there, that is a miss. We do the slow work, hand back the result, and keep a copy for next time.
+
+## scene-evict
+A cache has limited room. When it fills, something has to go. Usually we drop whatever has gone unused the longest.
+
+## scene-stale
+Copies can go stale, because the original changes. So each copy carries a time to live, and when it runs out, we fetch a fresh one.
+
+## scene-close
+A good cache is fast when it hits, small enough to afford, and honest about when its copies expire.
