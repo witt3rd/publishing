@@ -49,7 +49,8 @@ COPY tests ./tests
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra pdf --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
-ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_pdftools.py"]
+ENV GOLDEN_PROFILE=pdf
+ENTRYPOINT ["python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/test_pdftools.py", "tests/test_golden.py"]
 CMD []
 
 FROM pdf

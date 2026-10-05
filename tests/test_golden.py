@@ -1,4 +1,4 @@
-"""Golden fixtures for the media, pandoc, convert, extract and render profiles (docs: tests/golden/README.md).
+"""Golden fixtures for the media, pandoc, convert, extract, images, pdf and render profiles (docs: tests/golden/README.md).
 
 Each case converts a committed input (tests/golden/inputs) and compares the output's sha256 with
 tests/golden/manifest.json: a profile bump (ffmpeg, pandoc, TeX Live, office2pdf, a base image or this
@@ -7,7 +7,7 @@ reproducible (see media._DETERMINISTIC, pandoc's SOURCE_DATE_EPOCH), so a change
 Review it, then regenerate with GOLDEN_UPDATE=1 and commit the manifest with the bump.
 
 The bytes belong to one toolchain, so a profile runs only in its own image (GOLDEN_PROFILE=media|pandoc|
-convert|extract|render, set by the Dockerfile test stages) and skips elsewhere; a missing tool there fails.
+convert|extract|images|pdf|render, set by the Dockerfile test stages) and skips elsewhere; a missing tool there fails.
 
 Two documented tolerances. media's `audio.opus` and `video.webm`: libopus and libvpx pick CPU-specific code
 paths, so their encoded bytes differ between machines (the same ffmpeg build gave other hashes on the CI
@@ -77,6 +77,9 @@ def _toolchain(profile):
         return first("ffmpeg", "-version")
     if profile == "pandoc":
         return first("pandoc", "--version") + "; " + first("pdflatex", "--version")
+    if profile in ("images", "pdf"):
+        from importlib.metadata import version
+        return f"Pillow {version('pillow')}" if profile == "images" else f"pypdf {version('pypdf')}"
     if profile == "extract":
         from importlib.metadata import version
         return f"markitdown {version('markitdown')}; pypdfium2 {version('pypdfium2')}"
@@ -88,6 +91,8 @@ def _toolchain(profile):
 
 def _cases():
     from publishing import convert as cv, extract as ex, media, pandoc
+    from publishing import images as im, pdftools as pt
+    img, pdfs = INPUTS / "images", INPUTS / "pdf"
     md, html, docx, odt = (INPUTS / n for n in ("note.md", "page.html", "note.docx", "note.odt"))
     a, b = INPUTS / "clip-a.mp4", INPUTS / "clip-b.mp4"
     return {
@@ -123,6 +128,21 @@ def _cases():
         "extract": {
             f"{p.name}.md": (lambda p: lambda o: ex.extract(p, o))(p)
             for p in sorted((INPUTS / "extract").glob("a.*"))
+        },
+        "images": {
+            "resize-w48.png": lambda o: im.resize(img / "photo.png", o, width=48),
+            "resize-h32.jpg": lambda o: im.resize(img / "photo.png", o, height=32),
+            "convert.webp": lambda o: im.convert(img / "photo.png", o),
+            "convert.jpg": lambda o: im.convert(img / "photo.png", o),
+            "thumbnail-64.png": lambda o: im.thumbnail(img / "photo.png", o, size=64),
+            "webp-to.png": lambda o: im.convert(img / "plain.webp", o),
+            "strip-rotated.jpg": lambda o: im.strip(img / "rotated.jpg", o),
+        },
+        "pdf": {
+            "merge.pdf": lambda o: pt.merge([pdfs / "a.pdf", pdfs / "b.pdf"], o),
+            "pages-1-and-3.pdf": lambda o: pt.pages(pdfs / "a.pdf", o, select="1,3"),
+            "pages-reorder.pdf": lambda o: pt.pages(pdfs / "a.pdf", o, select="3-,1"),
+            "strip.pdf": lambda o: pt.strip(pdfs / "a.pdf", o),
         },
         "render": {
             **{f"pages.{m}": _render_file("pages.html", m)
@@ -184,6 +204,16 @@ def test_golden_convert(name, tmp_path):
 @pytest.mark.parametrize("name", _names("extract"))
 def test_golden_extract(name, tmp_path):
     _check("extract", name, tmp_path)
+
+
+@pytest.mark.parametrize("name", _names("images"))
+def test_golden_images(name, tmp_path):
+    _check("images", name, tmp_path)
+
+
+@pytest.mark.parametrize("name", _names("pdf"))
+def test_golden_pdf(name, tmp_path):
+    _check("pdf", name, tmp_path)
 
 
 @pytest.mark.parametrize("name", _names("render"))
