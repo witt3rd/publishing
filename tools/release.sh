@@ -28,7 +28,9 @@ fi
 if [ "${DRY_RUN:-}" = 1 ]; then
   echo "DRY RUN: would tag $tag at ${bump:0:7}, push to $remote, and create the GitHub release"; exit 0
 fi
-git tag -a "$tag" -m "publishing $py" "$bump"
+# An annotated tag needs a committer; the runner has none. Per-command, so no git config is written anywhere.
+git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+  tag -a "$tag" -m "publishing $py" "$bump"
 git push "$remote" "refs/tags/$tag"
 gh release create "$tag" --verify-tag --title "$tag" --generate-notes
 echo "released $tag at ${bump:0:7}"

@@ -65,3 +65,21 @@ def test_tags_the_bump_commit_not_head(repo):
     git(repo, "commit", "-qm", "later")
     p = run(repo)
     assert f"at {first}" in p.stdout
+
+
+def test_tags_without_any_git_identity_and_writes_no_config(repo, tmp_path):
+    """The Actions runner has no committer identity: the annotated tag must carry the bot's, per command."""
+    bump(repo, "1.0.0", "1.0.0")
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    (bin_ / "gh").write_text("#!/bin/sh\nexit 0\n")
+    (bin_ / "gh").chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("GIT_AUTHOR", "GIT_COMMITTER"))}
+    env |= {"PATH": f"{bin_}:{os.environ['PATH']}", "RELEASE_REPO": str(repo), "HOME": str(tmp_path / "home"),
+            "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
+            "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "user.useConfigOnly", "GIT_CONFIG_VALUE_0": "true"}
+    p = subprocess.run([str(SCRIPT)], capture_output=True, text=True, env=env)
+    assert p.returncode == 0, p.stderr
+    tagger = git(repo, "for-each-ref", "--format=%(taggername) %(taggeremail)", "refs/tags/v1.0.0").strip()
+    assert tagger == "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+    assert "user.name" not in (repo / ".git" / "config").read_text()
