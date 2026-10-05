@@ -49,8 +49,7 @@ Ordered by durability: the first outlast the last.
 ## Rules in force
 
 - **Report rules live elsewhere.** The rules for captain-facing reports
-  (what a report is, where copies go, naming) live outside this repo; the
-  README points at them and never restates them.
+  live outside this repo; the README points at them and never restates them.
 - **Credits.** Every third-party component is credited in `NOTICE` with its
   licence; a new one adds its line in the same PR.
 
