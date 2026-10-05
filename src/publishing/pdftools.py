@@ -1,4 +1,4 @@
-"""PDF tools through pypdf: `publishing pdf merge|pages|strip`, and the functions below for callers in Python.
+"""PDF tools through pypdf: `publishing pdf merge|pages|strip|split`, and the functions below for callers in Python.
 
 pypdf only (exact pin in the `pdf` extra); no Playwright, no Chromium, no PDFium, no network.
 
@@ -14,6 +14,10 @@ pypdf only (exact pin in the `pdf` extra); no Playwright, no Chromium, no PDFium
 - Deterministic: the same pypdf build turns the same inputs into the same bytes.
 - Limits: TIMEOUT seconds of wall clock (the work runs in a child process that is killed), MAX_INPUT_BYTES per
   input, MAX_PAGES of output, MAX_BYTES of output.
+
+- Split: `split` writes the pages of one PDF as consecutive parts of N pages each into a folder, named
+  `<stem>-001.pdf`, `<stem>-002.pdf`, ... Parts are cleaned like any output. Nothing in the folder is
+  overwritten (exit 2, nothing written); a failure or a limit leaves no part. Each part's path is a line on stdout.
 
 Exit codes of the command: 0 done, 1 a PDF could not be read or a limit was hit, 2 usage (unsupported type,
 no such source, the output exists, a bad page range), 3 pypdf is not installed.
@@ -138,6 +142,40 @@ def _clean(page) -> None:
         del page["/Annots"]
 
 
+def _save(writer, out) -> None:
+    writer.add_metadata({"/Producer": PRODUCER})
+    writer.generate_file_identifiers()
+    with open(out, "wb") as f:
+        writer.write(f)
+
+
+def _split_work(src, every, folder, stem, max_pages, max_input_bytes, conn):
+    try:
+        pypdf = _pypdf()
+        reader = _open(src, max_input_bytes)
+        count = len(reader.pages)
+        if count > max_pages:
+            raise PdfError(f"the output would have over {max_pages} pages")
+        width = max(3, len(str(-(-count // every))))
+        names = []
+        for i, first in enumerate(range(0, count, every), 1):
+            writer = pypdf.PdfWriter()
+            for n in range(first, min(first + every, count)):
+                page = reader.pages[n]
+                _clean(page)
+                writer.add_page(page)
+            name = f"{stem}-{i:0{width}d}.pdf"
+            _save(writer, folder / name)
+            names.append(name)
+        conn.send(names)
+    except PdfError as e:
+        conn.send((type(e).__name__, str(e)))
+    except BaseException as e:
+        conn.send(("PdfError", f"{type(e).__name__}: {' '.join(str(e).split())[:300]}"))
+    finally:
+        conn.close()
+
+
 def _work(plan, out, max_pages, max_input_bytes, conn):
     try:
         pypdf = _pypdf()
@@ -153,10 +191,7 @@ def _work(plan, out, max_pages, max_input_bytes, conn):
                 page = reader.pages[n]
                 _clean(page)  # before the copy: what is dropped must not reach the writer at all
                 writer.add_page(page)
-        writer.add_metadata({"/Producer": PRODUCER})
-        writer.generate_file_identifiers()
-        with open(out, "wb") as f:
-            writer.write(f)
+        _save(writer, out)
         conn.send(None)
     except PdfError as e:
         conn.send((type(e).__name__, str(e)))
@@ -200,6 +235,53 @@ def _process(plan, dest: Path, *, timeout, max_bytes, max_pages, max_input_bytes
         shutil.rmtree(temporary, ignore_errors=True)
 
 
+def _split_process(src: Path, every: int, folder: Path, *, timeout, max_bytes, max_pages, max_input_bytes) -> list[Path]:
+    """Write `src` as parts of `every` pages into `folder` (a child process killed after `timeout`); parts are
+    linked into place, all or none, and never over an existing file."""
+    _pypdf()
+    folder.parent.mkdir(parents=True, exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix="publishing-pdf-", dir=folder.parent))
+    linked: list[Path] = []
+    try:
+        ctx = multiprocessing.get_context("fork")
+        recv, send = ctx.Pipe(duplex=False)
+        proc = ctx.Process(target=_split_work, args=(src, every, temporary, src.stem, max_pages, max_input_bytes, send),
+                           daemon=True)
+        proc.start()
+        send.close()
+        proc.join(timeout)
+        if proc.is_alive():
+            proc.kill()
+            proc.join()
+            raise PdfError(f"timed out after {timeout:g} s")
+        result = recv.recv() if recv.poll() else ("PdfError", f"the parser stopped ({proc.exitcode})")
+        if not isinstance(result, list):
+            raise PdfError(result[1])
+        for name in result:
+            size = (temporary / name).stat().st_size
+            if size == 0:
+                raise PdfError("nothing was written")
+            if size > max_bytes:
+                raise PdfError(f"{name} is {size} bytes, over the {max_bytes}-byte cap")
+        clash = [n for n in result if (folder / n).exists() or (folder / n).is_symlink()]
+        if clash:
+            raise UsageError(f"{folder / clash[0]} exists; never overwrite")
+        folder.mkdir(exist_ok=True)
+        try:
+            for name in result:
+                os.link(temporary / name, folder / name)
+                linked.append(folder / name)
+        except FileExistsError:
+            raise UsageError(f"{folder / name} exists; never overwrite") from None
+        return linked
+    except BaseException:
+        for p in linked:
+            p.unlink(missing_ok=True)
+        raise
+    finally:
+        shutil.rmtree(temporary, ignore_errors=True)
+
+
 _LIMITS = dict(timeout=TIMEOUT, max_bytes=MAX_BYTES, max_pages=MAX_PAGES, max_input_bytes=MAX_INPUT_BYTES)
 
 
@@ -232,10 +314,24 @@ def strip(src, dest, **limits) -> Path:
     return _process([(_source(src), None)], _dest(dest), **{**_LIMITS, **limits})
 
 
+def split(src, folder, *, every: int = 1, **limits) -> list[Path]:
+    """`src` as consecutive parts of `every` pages each, `<stem>-001.pdf` and so on, in `folder`; returns the paths."""
+    src = _source(src)
+    if every < 1:
+        raise UsageError("--every must be at least 1")
+    folder = Path(folder)
+    if folder.suffix.lower() == ".pdf":
+        raise UsageError(f"{folder}: split writes into a folder, not a .pdf")
+    if "://" in str(folder) or (folder.exists() and not folder.is_dir()):
+        raise UsageError(f"{folder}: not a local folder")
+    return _split_process(src, every, folder, **{**_LIMITS, **limits})
+
+
 # --- the command ------------------------------------------------------------------------------
 
-def _common(p) -> None:
-    p.add_argument("-o", "--output", required=True, help="the PDF path (never overwritten)")
+def _common(p, folder=False) -> None:
+    p.add_argument("-o", "--output", required=True,
+                   help="the output folder (parts are never overwritten)" if folder else "the PDF path (never overwritten)")
     p.add_argument("--timeout", type=positive(float), default=TIMEOUT, metavar="SECONDS",
                    help=f"stop after this long (default {TIMEOUT:g})")
     p.add_argument("--max-bytes", type=positive(int), default=MAX_BYTES, metavar="N",
@@ -248,7 +344,7 @@ def _common(p) -> None:
 
 
 def add_arguments(p: argparse.ArgumentParser) -> None:
-    sub = p.add_subparsers(dest="pdf_cmd", required=True, metavar="{merge,pages,strip}")
+    sub = p.add_subparsers(dest="pdf_cmd", required=True, metavar="{merge,pages,strip,split}")
     m = sub.add_parser("merge", help="join PDFs, in the order given, into one")
     m.add_argument("sources", nargs="+", metavar="SRC")
     _common(m)
@@ -259,6 +355,10 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     t = sub.add_parser("strip", help="every page, with no metadata, outline, form, attachment or script")
     t.add_argument("src")
     _common(t)
+    u = sub.add_parser("split", help="one PDF as parts of N pages each (<stem>-001.pdf ...) in a folder")
+    u.add_argument("src")
+    u.add_argument("--every", type=positive(int), default=1, metavar="N", help="pages per part (default 1)")
+    _common(u, folder=True)
 
 
 def run(a) -> int:
@@ -266,6 +366,10 @@ def run(a) -> int:
     try:
         if a.pdf_cmd == "merge":
             dest = merge(a.sources, a.output, **kw)
+        elif a.pdf_cmd == "split":
+            for part in split(a.src, a.output, every=a.every, **kw):
+                print(part)
+            return 0
         elif a.pdf_cmd == "pages":
             dest = pages(a.src, a.output, select=a.select, **kw)
         else:
