@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 out="${1:-out}"; mkdir -p "$out"
-pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.12.0" publishing)
+pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.13.0" publishing)
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
 # The voice: OpenRouter's MAI-Voice when OPENROUTER_API_KEY is in the environment (run under `doppler run`, or

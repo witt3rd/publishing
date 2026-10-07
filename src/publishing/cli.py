@@ -43,7 +43,7 @@ except ModuleNotFoundError as e:  # the convert profile: the render extra is not
         """Stands in for render.ToolchainError, which the convert profile cannot import."""
 
 REPO = "https://github.com/witt3rd/publishing"
-FORMATS = ("deck", "memo", "document", "video")
+FORMATS = ("deck", "explainer", "memo", "document", "video")
 
 
 def usage(msg: str):

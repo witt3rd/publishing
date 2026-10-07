@@ -32,13 +32,20 @@ def folder_for(s: Source, cfg: Config) -> str:
 
 
 def publish(s: Source, cfg: Config, *, name: str | None = None) -> tuple[str, Path]:
-    """Return ("published" | "already published", target path)."""
+    """Return ("published" | "already published", target path). An explainer deck's PPTX goes with its PDF."""
+    state, target = _publish(s, cfg, s.pdf, name)
+    if s.kind == "explainer" and cfg.format != "markdown":
+        _publish(s, cfg, s.pptx, name)
+    return state, target
+
+
+def _publish(s: Source, cfg: Config, built: Path, name: str | None) -> tuple[str, Path]:
     if cfg.format == "markdown":
         if s.src.suffix != ".md":
             raise PublishError("format = \"markdown\": publish copies the markdown report, not a PDF")
         src = s.src
     else:
-        src = s.pdf
+        src = built
         if not src.is_file():
             raise PublishError(f"{src.name}: not built yet (publishing build {s.src.name})")
     stem = name or src.stem

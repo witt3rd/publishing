@@ -1,6 +1,6 @@
 """docs/report.toml: a repo's pin, project, scan words, publish folders and fixed documents.
 
-  publishing = "0.12.0"          # the tool version this repo builds with
+  publishing = "0.13.0"          # the tool version this repo builds with
   project = "Spire"             # default folder under ~/Documents for `publish`
   format = "pdf"                # "markdown": reports are the markdown itself; build refuses PDFs
   paper = "letter"              # memo/document default: "letter" or "a4"
