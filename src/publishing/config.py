@@ -1,6 +1,6 @@
 """docs/report.toml: a repo's pin, project, scan words, publish folders and fixed documents.
 
-  publishing = "0.13.0"          # the tool version this repo builds with
+  publishing = "0.14.0"          # the tool version this repo builds with
   project = "Spire"             # default folder under ~/Documents for `publish`
   format = "pdf"                # "markdown": reports are the markdown itself; build refuses PDFs
   paper = "letter"              # memo/document default: "letter" or "a4"
@@ -17,6 +17,10 @@
   tolerance = 40                # dB PSNR: the least similarity a fresh render's frames may have to the
                                 # committed MP4's (another ffmpeg build encodes them differently);
                                 # identical frames always pass. See README "Video".
+
+  [narrate]                     # `publishing narrate` defaults when no flag is given (flags win)
+  tts_model = "microsoft/mai-voice-2.1-flash"   # an OpenRouter speech model; absent: local Kokoro
+  voice = "en-US-Sage:MAI-Voice-2.1-Flash"      # that model's voice id (or a Kokoro voice)
 
   [user_content]                # build every source here as untrusted (docs/user-content.md)
   enabled = true                # off unless true; `build --user-content` turns it on per run

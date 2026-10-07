@@ -19,7 +19,7 @@ paragraph is a scene named scene-1, scene-2, ... The ids are the ids of the vide
 
 Out, in DIR (default: beside the script), never overwritten:
   NAME.wav    every scene's speech in order, each followed by --gap seconds of silence (24 kHz, mono, 16-bit)
-  NAME.json   {"voice", "sample_rate", "duration", "scenes": [{"id", "text", "start", "speech", "duration"}]}
+  NAME.json   {"voice", "tts_model", "tts_voice", "sample_rate", "duration", "scenes": [{"id", "text", "start", "speech", "duration"}]}
               start and duration are in seconds and tile the wav; `speech` is the spoken part of the duration.
               Give each video scene data-start=start and data-duration=duration (README "Narration").
 Its stdout is the two paths. Exit codes: 0 done; 1 synthesis failed or the model download did not verify;
@@ -262,6 +262,9 @@ def narrate(script, out_dir=None, *, voice: str | None = None, speed: float = 1.
         label = voice or VOICE
         kw = {"voice": label, "speed": speed, "models": models}
     frames, table = lay_out(synth(scenes, **kw), gap, label)
+    # what was asked for, explicitly: the model (null for local Kokoro) and the voice (null: the model's default)
+    table["tts_model"] = model or None
+    table["tts_voice"] = voice
     out_dir.mkdir(parents=True, exist_ok=True)
     with wave.open(str(wav_path), "wb") as w:
         w.setnchannels(1)
@@ -275,8 +278,9 @@ def narrate(script, out_dir=None, *, voice: str | None = None, speed: float = 1.
 def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("script", help="the narration script: `## scene-id` headings, the spoken text under each")
     p.add_argument("-o", "--output-dir", help="where NAME.wav and NAME.json go (default: beside the script; never overwritten)")
-    p.add_argument("--model", help="an OpenRouter speech model instead of local Kokoro (needs OPENROUTER_API_KEY and ffmpeg): "
-                   + ", ".join(MODELS))
+    p.add_argument("--tts-model", "--model", dest="model", metavar="MODEL",
+                   help="the OpenRouter speech model to use, any id (needs OPENROUTER_API_KEY and ffmpeg); without it, local "
+                   "Kokoro or the report.toml [narrate] tts_model. Known: " + ", ".join(MODELS))
     p.add_argument("--voice", help=f"a Kokoro voice (default {VOICE}), or the model's voice id (default: the one MODELS names)")
     p.add_argument("--speed", type=float, default=1.0, help="speaking speed, 0.5 to 2 (default 1)")
     p.add_argument("--gap", type=float, default=GAP, metavar="SECONDS", help=f"silence after each scene (default {GAP:g})")
@@ -284,12 +288,33 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.set_defaults(fn=run, needs_render=False)
 
 
+def config_defaults(script) -> tuple[str | None, str | None]:
+    """(tts_model, voice) from report.toml `[narrate]` found from the script's folder, else (None, None).
+    A caller that passes --tts-model or --voice never reaches this: explicit always wins."""
+    import tomllib  # not config.py: that imports the render profile, and narrate runs without it
+    here = Path(script).resolve().parent
+    path = next((c for d in [here, *here.parents] for c in (d / "report.toml", d / "docs" / "report.toml") if c.is_file()), None)
+    if path is None:
+        return None, None
+    try:
+        n = tomllib.loads(path.read_text()).get("narrate", {})
+    except tomllib.TOMLDecodeError as e:
+        raise Usage(f"{path}: {e}") from e
+    for k in ("tts_model", "voice"):
+        if k in n and not isinstance(n[k], str):
+            raise Usage(f"{path}: [narrate] {k} must be a string")
+    return n.get("tts_model") or None, n.get("voice") or None
+
+
 def run(a) -> int:
     try:
         if not 0.5 <= a.speed <= 2 or a.gap < 0:
             raise Usage("--speed is 0.5 to 2 and --gap is not negative")
-        wav, meta = narrate(a.script, a.output_dir, voice=a.voice, speed=a.speed, gap=a.gap, models=a.model_dir,
-                              model=a.model)
+        model, voice = a.model, a.voice
+        if model is None and voice is None:  # the standalone default: report.toml [narrate], else Kokoro
+            model, voice = config_defaults(a.script)
+        wav, meta = narrate(a.script, a.output_dir, voice=voice, speed=a.speed, gap=a.gap, models=a.model_dir,
+                              model=model)
     except NarrateError as e:
         print(f"publishing: {e}", file=sys.stderr)
         return e.exit_code
