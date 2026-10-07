@@ -55,7 +55,7 @@ names the install that adds the render profile.
 ## Use
 
 ```sh
-publishing new docs/notes/topic-v1 [--format deck|memo|document|video]   # scaffold a source folder
+publishing new docs/notes/topic-v1 [--format deck|explainer|memo|document|video]   # scaffold a source folder
 publishing build [SOURCE...] [--png DIR]   # build PDFs and MP4s beside their sources (default: all under docs/)
 publishing check [PATH...]                 # fail unless every PDF and MP4 matches a fresh build of its source
 publishing publish docs/notes/topic-v1     # copy the PDF or MP4 to ~/Documents/<folder>/, never overwriting
@@ -86,6 +86,8 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
 
 - **Formats.** `deck`: a folder with `slides.py` defining `TITLE` and `S` (page HTML at 1920×1080; the
   helpers in `publishing.page` give the title page, slides, cards and the numbered question card).
+  `explainer`: a folder with `explainer.py` (`TITLE`, `S`, `NOTES` from `publishing.explainer`): the house
+  explainer look, with speaker notes on every slide (see Explainer decks).
   `memo`: a folder with `memo.md`, portrait. `document`: a folder with `document.md`, long form, with a
   cover, contents with page numbers, a running header and page numbers. `video`: a folder with
   `video.html` (see Video). A folder with `source.txt` marks a PDF built elsewhere. Memos and documents

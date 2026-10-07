@@ -2,6 +2,7 @@
 
 A source is one of:
   <topic>-vN/slides.py     deck (TITLE and S, the page HTML); PDF is <topic>-vN.pdf beside the folder
+  <topic>-vN/explainer.py  explainer deck (TITLE, S and NOTES from publishing.explainer): <topic>-vN.pdf and .pptx
   <topic>-vN/memo.md       memo (portrait, markdown)
   <topic>-vN/document.md   document (long form: cover, contents, running header)
   <topic>-vN/video.html    video (a HyperFrames composition); the MP4 is <topic>-vN.mp4 (see video.py)
@@ -24,9 +25,9 @@ from . import markdown, pdf, scan, video
 from .config import Config, Document
 from .render import Renderer
 
-MARKERS = {"slides.py": "deck", "memo.md": "memo", "document.md": "document", "video.html": "video",
+MARKERS = {"slides.py": "deck", "explainer.py": "explainer", "memo.md": "memo", "document.md": "document", "video.html": "video",
            "source.txt": "copy"}
-KINDS = ("deck", "memo", "document", "video", "copy")
+KINDS = ("deck", "explainer", "memo", "document", "video", "copy")
 OUTPUTS = (".pdf", ".mp4")
 
 
@@ -36,7 +37,7 @@ class BuildError(Exception):
 
 @dataclass
 class Source:
-    kind: str  # deck | memo | document | video | copy
+    kind: str  # deck | explainer | memo | document | video | copy
     src: Path  # the folder, or the markdown file
     pdf: Path  # the output: a PDF, or for a video its MP4
     paper: str = "letter"
@@ -65,7 +66,7 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
                 s = Source(kind, target, target.parent / f"{target.name}{ext}", cfg.paper, cfg.days)
                 break
         else:
-            raise BuildError(f"{target}: no slides.py, memo.md, document.md, video.html or source.txt")
+            raise BuildError(f"{target}: no slides.py, explainer.py, memo.md, document.md, video.html or source.txt")
     elif target.suffix == ".md":
         entry = cfg.document_for(target) or (cfg.documents_pdf(out) if out else None)
         if entry:  # a listed document, or a copy of one (a pre-commit hook renders the staged file)
@@ -92,7 +93,7 @@ def resolve(target: Path, cfg: Config, fmt: str | None = None, out: Path | None 
     if out:
         s.pdf = out.resolve()
     if s.kind not in KINDS:
-        raise BuildError(f"{target}: unknown format {s.kind!r} (deck, memo, document or video)")
+        raise BuildError(f"{target}: unknown format {s.kind!r} (deck, explainer, memo, document or video)")
     if s.paper not in ("letter", "a4"):
         raise BuildError(f"{target}: paper must be letter or a4, not {s.paper!r}")
     return s
@@ -124,27 +125,38 @@ def _css_string(s: str) -> str:
     return '"' + " ".join(s.split()).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _deck_html(s: Source) -> str:
-    spec = importlib.util.spec_from_file_location(f"slides_{abs(hash(s.src))}", s.src / "slides.py")
+def _load_slides(s: Source):
+    """The author's slides.py or explainer.py, run: its module."""
+    name = "explainer.py" if s.kind == "explainer" else "slides.py"
+    spec = importlib.util.spec_from_file_location(f"slides_{abs(hash(s.src))}", s.src / name)
     mod = importlib.util.module_from_spec(spec)
     sys.path.insert(0, str(s.src))
     try:
         spec.loader.exec_module(mod)
     except Exception as e:  # the author's code: report it as a build problem
-        raise BuildError(f"{s.src.name}/slides.py: {type(e).__name__}: {e}") from e
+        raise BuildError(f"{s.src.name}/{name}: {type(e).__name__}: {e}") from e
     finally:
         sys.path.remove(str(s.src))
-    pages = getattr(mod, "S", None)
-    if not pages:
-        raise BuildError(f"{s.src.name}/slides.py defines no pages (S)")
-    return deck_html(pages, s.src, str(getattr(mod, "TITLE", s.src.name)))
+    if not getattr(mod, "S", None):
+        raise BuildError(f"{s.src.name}/{name} defines no pages (S)")
+    if s.kind == "explainer":
+        notes = getattr(mod, "NOTES", None)
+        if not notes or len(notes) != len(mod.S) or not all(str(n).strip() for n in notes):
+            raise BuildError(f"{s.src.name}/{name}: every slide needs speaker notes (NOTES, one per slide)")
+    return mod
 
 
-def deck_html(pages: list[str], base: Path, title: str) -> str:
+def _deck_html(s: Source) -> str:
+    mod = _load_slides(s)
+    return deck_html(mod.S, s.src, str(getattr(mod, "TITLE", s.src.name)),
+                     "explainer.css" if s.kind == "explainer" else "deck.css")
+
+
+def deck_html(pages: list[str], base: Path, title: str, css: str = "deck.css") -> str:
     """The deck page: slides in order, relative paths resolved against `base`, totals filled in."""
     body = "\n".join(pages).replace("%%TOTAL%%", str(len(pages)))
     return (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{htmlmod.escape(title)}</title>'
-            f'<base href="{base.as_uri()}/"><link rel="stylesheet" href="{(theme() / "deck.css").as_uri()}">'
+            f'<base href="{base.as_uri()}/"><link rel="stylesheet" href="{(theme() / css).as_uri()}">'
             f"</head><body>{body}</body></html>")
 
 
@@ -248,11 +260,11 @@ def render(s: Source, cfg: Config, out: Path, r: Renderer) -> list[str]:
     if s.kind == "video":
         return video.render(s.src, cfg, out, r, words=s.words, days=s.days)
     work = out.parent / f".{out.stem}.html"
-    if s.kind == "deck" and r.untrusted:
+    if s.kind in ("deck", "explainer") and r.untrusted:
         raise BuildError(f"{s.name}: a deck's slides.py is code; user-content mode builds memos and documents only")
-    if s.kind == "deck":
+    if s.kind in ("deck", "explainer"):
         work.write_text(_deck_html(s))
-        problems, text = r.pdf(work, out, kind="deck")
+        problems, text = r.pdf(work, out, kind=s.kind)
     else:
         work.write_text(_page_html(s, cfg, r=r))
         problems, text = r.pdf(work, out, kind=s.kind, paper=s.paper)

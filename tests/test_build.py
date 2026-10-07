@@ -15,7 +15,7 @@ def new(repo, name, fmt):
     return folder
 
 
-@pytest.mark.parametrize("fmt,pages", [("deck", 3), ("memo", 2), ("document", 2)])
+@pytest.mark.parametrize("fmt,pages", [("deck", 3), ("explainer", 4), ("memo", 2), ("document", 2)])
 def test_scaffold_builds_and_checks_current(repo, renderer, fmt, pages):
     folder = new(repo, f"topic-{fmt}-v1", fmt)
     cfg = load(folder)
@@ -178,3 +178,21 @@ def test_a_staged_copy_builds_with_the_documents_settings(repo, tmp_path):
     assert main(["check", str(repo / "docs" / "Spire.pdf")]) == 1  # docs/spire.md itself is missing
     (repo / "docs" / "spire.md").write_text(staged.read_text())
     assert main(["check", str(repo / "docs" / "Spire.pdf")]) == 0
+
+
+def test_explainer_needs_speaker_notes(repo, renderer):
+    folder = new(repo, "talk-v1", "explainer")
+    src = (folder / "explainer.py").read_text()
+    (folder / "explainer.py").write_text(src.replace('notes="Say what this deck explains and who it is for, in two sentences."', 'notes=""'))
+    cfg = load(folder)
+    with pytest.raises(BuildError, match="notes are required"):
+        build(resolve(folder, cfg), cfg, renderer)
+
+
+def test_explainer_lint_refuses_a_title_that_wraps(repo, renderer):
+    folder = new(repo, "talk-v1", "explainer")
+    src = (folder / "explainer.py").read_text()
+    (folder / "explainer.py").write_text(src.replace('"One sentence the audience should keep"', '"' + "word " * 30 + '"'))
+    cfg = load(folder)
+    with pytest.raises(BuildError, match="title wraps"):
+        build(resolve(folder, cfg), cfg, renderer)

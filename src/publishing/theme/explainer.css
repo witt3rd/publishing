@@ -1,0 +1,137 @@
+/* Explainer deck: 1920x1080 slides, paper, ink, one accent, the outcome colours. The look of the house
+   explainer decks (PDF and editable PPTX from one source; README "Explainer decks"). The palette and fonts
+   are house.css's, shared by every format. */
+@import url("house.css");
+:root {
+  --detour: #3f9fa6;
+  --approx: #8fcca5;
+  --unreached: #b9bec8;
+  --staging: #c9c4b6;
+}
+@page { size: 1920px 1080px; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #888; }
+body { font-family: var(--sans); color: var(--ink); }
+.slide {
+  width: 1920px; height: 1080px; position: relative; overflow: hidden;
+  background: var(--paper); page-break-after: always; break-after: page;
+  padding: 88px 120px 96px 120px;
+}
+.slide .kicker { font-size: 22px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.slide h1 { font-size: 64px; line-height: 1.08; margin: 14px 0 0 0; font-weight: 700; letter-spacing: -0.01em; max-width: 1680px; }
+.slide h2 { font-size: 34px; line-height: 1.25; margin: 18px 0 0 0; font-weight: 400; color: var(--ink2); max-width: 1500px; }
+.slide .body { position: absolute; left: 120px; right: 120px; top: 300px; bottom: 120px; }
+.slide .foot {
+  position: absolute; left: 120px; right: 120px; bottom: 34px; height: 30px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  font-size: 17px; color: var(--muted);
+}
+.slide .foot .src { max-width: 1500px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slide .foot .src b { color: var(--ink2); font-weight: 600; }
+.slide .foot .num { font-variant-numeric: tabular-nums; }
+.slide .rule { position: absolute; left: 120px; right: 120px; bottom: 76px; border-top: 1px solid var(--line); }
+
+/* Title and section slides */
+.slide.title { background: var(--ink); color: #fff; padding: 140px 160px; }
+.slide.title h1 { font-size: 96px; color: #fff; max-width: 1500px; }
+.slide.title h2 { color: #c9cbe0; font-size: 40px; max-width: 1400px; }
+.slide.title .kicker { color: #b3a9ff; }
+.slide.title .foot { color: #8f93ad; }
+.slide.title .rule { border-color: #3a4256; }
+.slide.section { background: var(--accent); color: #fff; padding: 220px 160px; }
+.slide.section .big { font-size: 260px; font-weight: 800; line-height: 1; opacity: .25; position: absolute; right: 140px; top: 120px; }
+.slide.section h1 { font-size: 92px; color: #fff; max-width: 1350px; }
+.slide.section h2 { color: #e4e0ff; font-size: 40px; max-width: 1300px; }
+.slide.section .kicker { color: #fff; opacity: .8; }
+.slide.section .foot { color: #d6d1ff; }
+.slide.section .rule { border-color: #7d70e3; }
+
+/* Quote slides */
+.quote { font-size: 54px; line-height: 1.32; font-weight: 400; max-width: 1560px; position: relative; padding-left: 64px; }
+.quote::before { content: "\201C"; position: absolute; left: -14px; top: -40px; font-size: 200px; color: var(--accent); opacity: .35; font-family: serif; }
+.quote .em { color: var(--accent); font-weight: 600; }
+.who { margin-top: 36px; padding-left: 64px; font-size: 28px; color: var(--ink2); }
+
+/* Lines of plain text */
+.points { list-style: none; padding: 0; margin: 0; font-size: 36px; line-height: 1.35; }
+.points li { margin: 0 0 26px 0; padding-left: 46px; position: relative; max-width: 1560px; }
+.points li::before { content: ""; position: absolute; left: 4px; top: 17px; width: 16px; height: 16px; border-radius: 4px; background: var(--accent); }
+.points li .dim { color: var(--muted); }
+
+/* Screenshot slides */
+.shotwrap { position: absolute; top: 250px; bottom: 112px; overflow: hidden; border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(20,24,40,.16), 0 0 0 1px rgba(20,24,40,.08); background: #fff; }
+.shotwrap img { position: absolute; display: block; }
+.hl { position: absolute; border: 5px solid var(--accent); border-radius: 10px; box-shadow: 0 0 0 6000px rgba(29,36,51,.28); }
+.side { position: absolute; top: 260px; bottom: 120px; }
+.side .said { background: var(--card); border-left: 8px solid var(--ink); border-radius: 10px; padding: 22px 26px; font-size: 28px; line-height: 1.35; box-shadow: 0 2px 0 rgba(0,0,0,.04); }
+.side .said .by { display: block; font-size: 19px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
+.side .then { margin-top: 26px; font-size: 28px; line-height: 1.4; color: var(--ink); }
+.side .then b { color: var(--accent); }
+.badge { display: inline-block; padding: 6px 16px; border-radius: 999px; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: .04em; }
+.badge.hit { background: var(--hit); } .badge.approx { background: #5aae7c; } .badge.detour { background: var(--detour); }
+.badge.missed { background: var(--missed); } .badge.red { background: var(--red); } .badge.unreached { background: #9aa0ab; }
+.badge.label { background: var(--ink2); }
+.side .badges { margin-top: 26px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Diagram slides */
+.diagram { position: absolute; left: 120px; right: 120px; top: 270px; bottom: 112px; }
+.diagram svg { width: 100%; height: 100%; }
+.caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
+
+/* Cards */
+.cards { display: grid; gap: 28px; }
+.card { background: var(--card); border-radius: 16px; padding: 30px 32px; box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 0 0 1px var(--line); }
+.card h3 { margin: 0 0 12px 0; font-size: 34px; }
+.card p { margin: 0; font-size: 28px; line-height: 1.38; color: var(--ink2); }
+.card .tag { font-size: 18px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; }
+
+/* Story slides (what went wrong) */
+.story { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; }
+.story .card .tag { color: var(--muted); }
+.story .card.what .tag { color: var(--red); }
+.story .card.why .tag { color: var(--missed); }
+.story .card.fix .tag { color: var(--hit); }
+
+.mono { font-family: var(--mono); }
+.stat { display:inline-block; margin-right:56px; font-size:26px; color:var(--ink2); }
+.stat b { font-size:52px; color:var(--accent); margin-right:10px; vertical-align:-6px; }
+.dim2 { font-size:22px; color:var(--muted); }
+
+/* Slide kinds: title (presenter), cards (lesson bar), story, map, contrast, two columns, closing numbers. */
+.slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 30px; color: #c9cbe0; }
+.slide.title h1.first { margin-top: 170px; }
+.card .points li { margin-bottom: 16px; }
+.cards .card p { font-size: 30px; }
+.card .points li::before { top: 14px; }
+.cards.lessoned { bottom: 250px; align-content: stretch; }
+.card.accent-top { border-top: 10px solid var(--accent); }
+.points.big { font-size: 38px; }
+.points.mid { font-size: 34px; }
+.sp { font-size: 29px !important; color: var(--ink) !important; line-height: 1.4 !important; }
+.lesson { position: absolute; left: 120px; right: 120px; bottom: 120px; height: 100px; background: var(--ink); color: #fff; border-radius: 16px; font-size: 30px; display: flex; align-items: center; padding: 0 36px; gap: 28px; }
+.lesson span { font-size: 18px; letter-spacing: .14em; text-transform: uppercase; color: #b3a9ff; font-weight: 700; white-space: nowrap; }
+.maptable { position: absolute; left: 120px; right: 120px; top: 262px; bottom: 100px; overflow: hidden; }
+.maptable table { width: 100%; border-collapse: separate; border-spacing: 0 7px; font-size: 22px; }
+.maptable th { text-align: left; font-size: 17px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 18px; }
+.maptable td { background: #fff; padding: 10px 18px; line-height: 1.25; box-shadow: 0 1px 0 var(--line); }
+.maptable td.ours { width: 31%; border-radius: 12px 0 0 12px; font-weight: 600; }
+.maptable td.arrow { width: 3%; color: var(--accent); font-weight: 800; padding: 0; text-align: center; }
+.maptable td.theirs { width: 48%; color: var(--ink2); }
+.maptable td:last-child { border-radius: 0 12px 12px 0; width: 17%; }
+.chip { display: inline-block; padding: 5px 14px; border-radius: 999px; font-size: 19px; font-weight: 700; color: #fff; white-space: nowrap; }
+.chip.same { background: var(--detour); } .chip.ahead { background: var(--hit); } .chip.behind { background: var(--missed); } .chip.differs { background: var(--ink2); }
+.contrast { top: 262px; bottom: auto; height: 340px; display: grid; grid-template-columns: 1fr 1.25fr; gap: 28px; }
+.contrast .card p { font-size: 27px; color: var(--ink); line-height: 1.4; }
+.contrast .tag { font-size: 18px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 12px; }
+.then-card .tag { color: var(--muted); } .then-card p { color: var(--ink2) !important; }
+.now-card { border-left: 10px solid var(--accent); } .now-card .tag { color: var(--accent); }
+.exrow { position: absolute; left: 120px; right: 120px; top: 668px; bottom: auto; display: grid; gap: 22px; }
+.ex { background: var(--accent-soft); border-radius: 14px; padding: 22px 24px; min-height: 230px; overflow: hidden; }
+.exh { font-size: 18px; letter-spacing: .1em; text-transform: uppercase; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+.ext { font-size: 25px; line-height: 1.38; color: var(--ink); }
+.closing h1 { margin-top: 40px; }
+.evrow { position: absolute; left: 160px; right: 160px; top: 580px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 36px; }
+.ev { background: #273049; border-radius: 18px; padding: 30px 32px; }
+.evn { font-size: 64px; font-weight: 800; color: #b3a9ff; line-height: 1; margin-bottom: 18px; }
+.evt { font-size: 25px; line-height: 1.4; color: #e6e7f2; }

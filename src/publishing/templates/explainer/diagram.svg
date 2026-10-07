@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 520" font-family="Noto Sans, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b4bd6"/></marker>
+  </defs>
+  <g text-anchor="middle">
+    <rect x="60" y="190" width="420" height="140" rx="18" fill="#fff" stroke="#5b4bd6" stroke-width="3"/>
+    <text x="270" y="250" font-size="32" font-weight="800" fill="#1d2433">Input</text>
+    <text x="270" y="293" font-size="23" fill="#4a5163">what goes in</text>
+    <rect x="630" y="190" width="420" height="140" rx="18" fill="#5b4bd6"/>
+    <text x="840" y="250" font-size="32" font-weight="800" fill="#fff">Step</text>
+    <text x="840" y="293" font-size="23" fill="#e4e0ff">what happens to it</text>
+    <rect x="1200" y="190" width="420" height="140" rx="18" fill="#fff" stroke="#5b4bd6" stroke-width="3"/>
+    <text x="1410" y="250" font-size="32" font-weight="800" fill="#1d2433">Output</text>
+    <text x="1410" y="293" font-size="23" fill="#4a5163">what comes out</text>
+  </g>
+  <g fill="none" stroke="#5b4bd6" stroke-width="5">
+    <path d="M486 260 L624 260" marker-end="url(#a)"/>
+    <path d="M1056 260 L1194 260" marker-end="url(#a)"/>
+  </g>
+</svg>

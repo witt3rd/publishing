@@ -33,6 +33,55 @@ DECK_LINT = """() => {
   return [...new Set(out)];
 }"""
 
+EXPLAINER_LINT = """() => {
+  const out = [];
+  const hit = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+  const BODY = '.body, .diagram, .maptable, .lesson, .card, .exrow, .ex, .side, .tbl, .evrow';
+  document.querySelectorAll('img').forEach((e) => { if (e.complete && !e.naturalWidth) out.push(`image not found: ${e.getAttribute('src')}`); });
+  const all = document.querySelectorAll('.slide');
+  all.forEach((s, i) => {
+    const n = i + 1, S = s.getBoundingClientRect();
+    const num = s.querySelector('.foot .num');
+    if (!num || num.textContent.trim() !== `${n} / ${all.length}`) out.push(`page ${n}: no slide number`);
+    else {
+      const r = num.getBoundingClientRect();
+      if (r.right < S.right - 200 || r.bottom < S.bottom - 80) out.push(`page ${n}: the slide number is not bottom right`);
+    }
+    const src = s.querySelector('.foot .src');
+    if (src && src.scrollWidth > src.clientWidth + 1) out.push(`page ${n}: the Source: line is cut off`);
+    const h1 = s.querySelector('h1');
+    if (h1 && !s.classList.contains('title') && !s.classList.contains('section') && h1.getBoundingClientRect().height > 100)
+      out.push(`page ${n}: the title wraps to a second line`);
+    const head = [...s.querySelectorAll('h1, h2')].map((e) => [e, e.getBoundingClientRect()]);
+    const body = [...s.querySelectorAll(BODY)].map((e) => [e, e.getBoundingClientRect()]);
+    const floor = S.bottom - 76;
+    for (const [e, r] of body)
+      if (r.height && r.bottom > floor + 1) out.push(`page ${n}: .${String(e.className).split(' ')[0]} runs into the footer (${Math.round(r.bottom - floor)}px)`);
+    for (const [he, hr] of head) for (const [be, br] of body)
+      if (hit(hr, br)) out.push(`page ${n}: ${he.tagName.toLowerCase()} overlaps .${String(be.className).split(' ')[0]}`);
+    for (let a = 0; a < head.length; a++) for (let b = a + 1; b < head.length; b++)
+      if (hit(head[a][1], head[b][1])) out.push(`page ${n}: header parts overlap`);
+    s.querySelectorAll('*').forEach((e) => {
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      if (r.right > S.right + 1 || r.bottom > S.bottom + 1 || r.left < S.left - 1 || r.top < S.top - 1)
+        out.push(`page ${n}: <${e.tagName.toLowerCase()}> leaves the page`);
+    });
+    s.querySelectorAll('svg').forEach((svg) => {
+      const R = svg.getBoundingClientRect();
+      svg.querySelectorAll('text').forEach((t) => {
+        const r = t.getBoundingClientRect();
+        if (r.right > R.right + 2 || r.left < R.left - 2 || r.bottom > R.bottom + 2 || r.top < R.top - 2)
+          out.push(`page ${n}: svg text leaves its diagram: "${t.textContent.slice(0, 40)}"`);
+      });
+    });
+    s.querySelectorAll('.card, .maptable, .ex').forEach((c) => {
+      if (c.scrollHeight > c.clientHeight + 2) out.push(`page ${n}: text overflows a .${String(c.className).split(' ')[0]}`);
+    });
+  });
+  return [...new Set(out)];
+}"""
+
 PAGE_LINT = """() => {
   const out = [], col = document.querySelector('main') || document.body;
   const right = col.getBoundingClientRect().right;
@@ -133,7 +182,7 @@ class Renderer:
         printed (innerText: after text-transform, unlike text read back from letter-spaced PDF glyphs).
         `kind="html"` is a whole page of its own (render-html --trusted): no house lint, `paper` sizes
         it unless it sets @page size."""
-        if kind == "deck":
+        if kind in ("deck", "explainer"):
             viewport = {"width": 1920, "height": 1080}
         else:
             w, h = PAPER_MM[paper]
@@ -143,7 +192,7 @@ class Renderer:
             page.goto(html.resolve().as_uri(), wait_until="load")
             # load every vendored face, including those only the print margin boxes use
             page.evaluate("Promise.all([...document.fonts].map((f) => f.load())).then(() => document.fonts.ready).then(() => true)")
-            problems = page.evaluate(DECK_LINT if kind == "deck" else PAGE_LINT) if kind != "html" else []
+            problems = page.evaluate({"deck": DECK_LINT, "explainer": EXPLAINER_LINT}.get(kind, PAGE_LINT)) if kind != "html" else []
             text = page.evaluate("document.body ? document.body.innerText : ''")
             size = {"format": "Letter" if paper == "letter" else "A4"} if kind == "html" else {}
             page.pdf(path=str(out), prefer_css_page_size=True, print_background=True,
