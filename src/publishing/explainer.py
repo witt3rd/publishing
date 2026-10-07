@@ -97,7 +97,7 @@ class Explainer:
         """`svg`: a file in the source folder, inlined so its text uses the vendored fonts."""
         text = (self.here / svg).read_text()
         text = text[text.index("<svg"):]
-        top = top or (300 if sub else 250)
+        top = top if top is not None else (300 if sub else 250)
         page = (f'<section class="slide">{self._head(kicker, title, sub)}'
                 f'<div class="diagram" style="top:{top}px">{text}</div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
@@ -106,7 +106,7 @@ class Explainer:
         """`cards`: (heading, words, colour) tuples; `lesson`: (label, words), a bar under the cards."""
         body = "".join(f'<div class="card" style="border-top:10px solid {_color(c)}">'
                        f'<h3 style="color:{_color(c)}">{esc(h)}</h3><p>{p}</p></div>' for h, p, c in cards)
-        top = top or (340 if sub else 280)
+        top = top if top is not None else (340 if sub else 280)
         bar = f'<div class="lesson"><span>{esc(lesson[0])}</span>{lesson[1]}</div>' if lesson else ""
         page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards{" lessoned" if lesson else ""}" '
                 f'style="top:{top}px; grid-template-columns:repeat({cols},1fr)">{body}</div>{bar}{self._foot(src)}</section>')

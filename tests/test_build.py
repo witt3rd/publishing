@@ -196,3 +196,12 @@ def test_explainer_lint_refuses_a_title_that_wraps(repo, renderer):
     cfg = load(folder)
     with pytest.raises(BuildError, match="title wraps"):
         build(resolve(folder, cfg), cfg, renderer)
+
+
+def test_explainer_notes_must_match_the_slides_even_when_set_by_hand(repo, renderer):
+    folder = new(repo, "talk-v1", "explainer")
+    with open(folder / "explainer.py", "a") as f:
+        f.write("\nNOTES = NOTES[:-1]\n")  # a hand-set NOTES, bypassing Explainer's own check
+    cfg = load(folder)
+    with pytest.raises(BuildError, match="every slide needs speaker notes"):
+        build(resolve(folder, cfg), cfg, renderer)
