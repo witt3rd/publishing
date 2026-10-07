@@ -266,3 +266,11 @@ def test_publish_copies_the_pptx_with_the_pdf(repo, renderer, tmp_path, monkeypa
     assert state == "published" and target.suffix == ".pdf"
     assert (target.parent / "talk-v1.pptx").read_bytes() == s.pptx.read_bytes()
     assert publish(s, cfg)[0] == "already published"
+
+def test_explainer_notes_must_match_the_slides_even_when_set_by_hand(repo, renderer):
+    folder = new(repo, "talk-v1", "explainer")
+    with open(folder / "explainer.py", "a") as f:
+        f.write("\nNOTES = NOTES[:-1]\n")  # a hand-set NOTES, bypassing Explainer's own check
+    cfg = load(folder)
+    with pytest.raises(BuildError, match="every slide needs speaker notes"):
+        build(resolve(folder, cfg), cfg, renderer)
