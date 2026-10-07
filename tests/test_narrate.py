@@ -138,3 +138,13 @@ def test_report_toml_narrate_defaults_and_flags_win(tmp_path):
     a = p.parse_args(["x.txt", "--tts-model", "elevenlabs/eleven-v4-turbo", "--voice", "Rachel"])
     assert (a.model, a.voice) == ("elevenlabs/eleven-v4-turbo", "Rachel")
     assert p.parse_args(["x.txt", "--model", "m"]).model == "m"  # the old name still works
+
+
+def test_house_default_is_brian_on_eleven_v4_turbo_and_explicit_wins():
+    assert nr.resolve(None, None) == ("elevenlabs/eleven-v4-turbo", "Brian")
+    assert nr.resolve(None, "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
+    assert nr.resolve("fish-audio/s2.1-pro", None) == ("fish-audio/s2.1-pro", None)
+    assert nr.resolve("elevenlabs/eleven-v4-turbo", "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
+    assert nr.resolve("kokoro", None) == (None, None) and nr.resolve("local", "af_sky") == (None, "af_sky")
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", "v1")) == ("fish-audio/s2.1-pro", "v1")  # report.toml beats the house default
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", None)) == ("fish-audio/s2.1-pro", None)

@@ -361,7 +361,7 @@ turns a narration script into speech timed to a video's scenes. Install `publish
 - **Out.** `NAME.wav` (24 kHz mono, each scene followed by `--gap` seconds of silence, default 0.6) and `NAME.json`
   with each scene's `start`, `speech` and `duration` in seconds; the durations tile the wav. Neither is ever
   overwritten. Put each scene's `start` and `duration` in its `data-start` and `data-duration`.
-- **Voices.** The default is Kokoro, local, free, no key: `kokoro-onnx` is pinned in the extra and the two model
+- **Voices.** Kokoro (`--tts-model kokoro`) is local, free, no key: `kokoro-onnx` is pinned in the extra and the two model
   files (about 350 MB) are fetched once into `~/.cache/publishing/kokoro`, checked against a pinned sha256 (or give
   `--model-dir`). `--model` selects an OpenRouter speech model instead: `microsoft/mai-voice-2.1-flash`,
   `fish-audio/s2.1-pro`, `fish-audio/s2.1-pro-free:free`, `deepgram/flux-tts`, `bytedance-seed/seed-audio-1-0`, or
@@ -373,12 +373,13 @@ turns a narration script into speech timed to a video's scenes. Install `publish
 - **Explicit model and voice.** A caller names both: `--tts-model elevenlabs/eleven-v4-turbo --voice <voice id or name>`
   (`--model` is the old spelling of `--tts-model`). Any OpenRouter speech model id is passed through as given; the
   voice is sent as given, or, left out, is the one `MODELS` names for a known model (none for another). The standalone
-  default exists only when neither flag is given: `[narrate] tts_model` and `voice` in `docs/report.toml`, else Kokoro
-  `af_heart`. A host that drives narration, such as Spire, passes `--tts-model` and `--voice` itself; which model is
+  default exists only when `--tts-model` is not given: `[narrate] tts_model` and `voice` in `docs/report.toml`, else the
+  **house voice, `elevenlabs/eleven-v4-turbo` voice `Brian` (US, deep)**, which needs `OPENROUTER_API_KEY` and ffmpeg.
+  `--tts-model kokoro` (or `local`) is the local, free, keyless voice (`--voice` then a Kokoro voice, default `af_heart`). A host that drives narration, such as Spire, passes `--tts-model` and `--voice` itself; which model is
   meant stays its own resolution (its gateway key, `SPEAK_MODEL`), nothing here reads that. `NAME.json` records
   `tts_model` (null for Kokoro) and `tts_voice` (null when the default voice was used) beside `voice`.
 - **Worked example.** [examples/narration/caching-explainer-v1](examples/narration/caching-explainer-v1): the script,
-  the video as a template and `build.sh`, which narrates (MAI-Voice when a key is set, else Kokoro), fits the scenes
+  the video as a template and `build.sh`, which narrates (the house voice when a key is set, else Kokoro), fits the scenes
   to the speech, builds the video and muxes the audio. Sources only; the MP4 is not committed.
 - **Exit codes.** 0 done; 1 synthesis or the model download failed; 2 usage (no scenes, an output exists, no key for
   `--tts-model`); 3 the extra or ffmpeg is missing.

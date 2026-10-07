@@ -45,7 +45,10 @@ MODEL_FILES = {  # name -> sha256
     "kokoro-v1.0.onnx": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
     "voices-v1.0.bin": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
 }
-VOICE = "af_heart"
+VOICE = "af_heart"  # the Kokoro voice
+LOCAL = ("kokoro", "local")  # --tts-model values that mean local Kokoro
+DEFAULT_MODEL = "elevenlabs/eleven-v4-turbo"  # the house voice for the standalone CLI: Brian (US, deep), via OpenRouter
+DEFAULT_VOICE = "Brian"
 ENDPOINT = "https://openrouter.ai/api/v1/audio/speech"
 MODELS = {  # OpenRouter speech model -> the voice it needs ("" when it takes none)
     "fish-audio/s2.1-pro": "",
@@ -202,7 +205,7 @@ def _decode(mp3: bytes):
 def synthesize_openrouter(scenes, *, model: str, voice: str | None = None, speed: float = 1.0, **_):
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
-        raise Usage("--model needs OPENROUTER_API_KEY in the environment (e.g. `doppler run -- publishing narrate ...`)")
+        raise Usage("--model needs OPENROUTER_API_KEY in the environment (e.g. `doppler run -- publishing narrate ...`; `--tts-model kokoro` is local and needs none)")
     voice = MODELS.get(model, "") if voice is None else voice
     out = []
     for sid, text in scenes:
@@ -279,13 +282,27 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("script", help="the narration script: `## scene-id` headings, the spoken text under each")
     p.add_argument("-o", "--output-dir", help="where NAME.wav and NAME.json go (default: beside the script; never overwritten)")
     p.add_argument("--tts-model", "--model", dest="model", metavar="MODEL",
-                   help="the OpenRouter speech model to use, any id (needs OPENROUTER_API_KEY and ffmpeg); without it, local "
-                   "Kokoro or the report.toml [narrate] tts_model. Known: " + ", ".join(MODELS))
+                   help="the OpenRouter speech model, any id (needs OPENROUTER_API_KEY and ffmpeg), or `kokoro` for local, free "
+                   f"speech. Default: report.toml [narrate] tts_model, else {DEFAULT_MODEL} voice {DEFAULT_VOICE}. Known: "
+                   + ", ".join(MODELS))
     p.add_argument("--voice", help=f"a Kokoro voice (default {VOICE}), or the model's voice id (default: the one MODELS names)")
     p.add_argument("--speed", type=float, default=1.0, help="speaking speed, 0.5 to 2 (default 1)")
     p.add_argument("--gap", type=float, default=GAP, metavar="SECONDS", help=f"silence after each scene (default {GAP:g})")
     p.add_argument("--model-dir", help="a directory holding kokoro-v1.0.onnx and voices-v1.0.bin (default: the user cache, fetched once)")
     p.set_defaults(fn=run, needs_render=False)
+
+
+def resolve(model, voice, config=(None, None)):
+    """(model, voice) to synthesize with. Explicit flags win; the standalone default (no --tts-model) is
+    report.toml `[narrate]`, else the house voice (DEFAULT_MODEL, Brian). `kokoro` or `local` is local Kokoro:
+    model None, and the voice a Kokoro one (None: VOICE)."""
+    if model is None:
+        model = config[0] or DEFAULT_MODEL
+        if voice is None:
+            voice = config[1] or (DEFAULT_VOICE if model == DEFAULT_MODEL else None)
+    if model in LOCAL:
+        model = None
+    return model, voice
 
 
 def config_defaults(script) -> tuple[str | None, str | None]:
@@ -310,9 +327,7 @@ def run(a) -> int:
     try:
         if not 0.5 <= a.speed <= 2 or a.gap < 0:
             raise Usage("--speed is 0.5 to 2 and --gap is not negative")
-        model, voice = a.model, a.voice
-        if model is None and voice is None:  # the standalone default: report.toml [narrate], else Kokoro
-            model, voice = config_defaults(a.script)
+        model, voice = resolve(a.model, a.voice, config_defaults(a.script))
         wav, meta = narrate(a.script, a.output_dir, voice=voice, speed=a.speed, gap=a.gap, models=a.model_dir,
                               model=model)
     except NarrateError as e:

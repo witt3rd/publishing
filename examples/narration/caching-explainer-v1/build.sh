@@ -8,12 +8,12 @@ out="${1:-out}"; mkdir -p "$out"
 pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.14.0" publishing)
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
-# The voice: OpenRouter's MAI-Voice when OPENROUTER_API_KEY is in the environment (run under `doppler run`, or
+# The voice: OpenRouter's house voice (elevenlabs/eleven-v4-turbo, Brian) when OPENROUTER_API_KEY is in the environment (run under `doppler run`, or
 # export it; the key is read from the environment only), else local, free Kokoro. NARRATE_MODEL=... picks another
 # OpenRouter speech model, NARRATE_MODEL=kokoro forces the local voice.
 model="${NARRATE_MODEL:-}"
-[ -n "$model" ] || { [ -z "${OPENROUTER_API_KEY:-}" ] || model=microsoft/mai-voice-2.1-flash; }
-args=(); [ -z "$model" ] || [ "$model" = kokoro ] || args=(--model "$model")
+[ -n "$model" ] || { [ -n "${OPENROUTER_API_KEY:-}" ] || model=kokoro; }   # no key: local Kokoro; else the house default
+args=(); [ -z "$model" ] || args=(--tts-model "$model")
 "${pub[@]}" narrate narration.txt -o "$out" "${args[@]}"   # out/narration.wav and out/narration.json
 # Fit the scenes to the speech: fill the template's start and duration from out/narration.json.
 mkdir -p "$out/src/caching-explainer-v1"
