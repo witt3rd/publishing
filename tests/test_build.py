@@ -266,3 +266,15 @@ def test_publish_copies_the_pptx_with_the_pdf(repo, renderer, tmp_path, monkeypa
     assert state == "published" and target.suffix == ".pdf"
     assert (target.parent / "talk-v1.pptx").read_bytes() == s.pptx.read_bytes()
     assert publish(s, cfg)[0] == "already published"
+
+
+def test_the_explainer_sample_is_current_and_has_every_slide_kind(renderer):
+    from pathlib import Path
+    sample = Path(__file__).resolve().parent.parent / "docs" / "samples" / "house-style-explainer-v1"
+    cfg = load(sample)
+    s = resolve(sample, cfg)
+    assert check(s, cfg, renderer) is None
+    assert pdf.pages(s.pdf) == 11
+    html = (sample / "explainer.py").read_text()
+    for kind in ("title", "section", "statement", "quote", "diagram", "cards", "story", "map", "contrast", "twocol", "closing"):
+        assert f"x.{kind}(" in html

@@ -43,7 +43,7 @@ def _fill(shape_fill, c) -> None:
     _alpha(shape_fill._xPr.find(".//{http://schemas.openxmlformats.org/drawingml/2006/main}srgbClr"), c["a"])
 
 
-def _text(tf, it) -> None:
+def _text(tf, it, bg=None) -> None:
     from pptx.enum.text import MSO_ANCHOR, PP_ALIGN, MSO_AUTO_SIZE
     from pptx.util import Pt
     tf.word_wrap = bool(it["wrap"])
@@ -64,8 +64,11 @@ def _text(tf, it) -> None:
         f.size = Pt(round(r["size"] / 2 * 4) / 4)
         f.bold, f.italic, f.name = r["bold"], r["italic"], r["font"]
         if r.get("color"):
-            f.color.rgb = _rgb(r["color"])
-            _alpha(run._r.rPr.find(".//{http://schemas.openxmlformats.org/drawingml/2006/main}srgbClr"), r["color"]["a"])
+            c = r["color"]
+            if c["a"] < 0.999 and bg:  # translucent text is its colour mixed into the slide (PowerPoint clips alpha text)
+                c = {k: c[k] * c["a"] + bg[k] * (1 - c["a"]) for k in "rgb"} | {"a": 1}
+            f.color.rgb = _rgb(c)
+            _alpha(run._r.rPr.find(".//{http://schemas.openxmlformats.org/drawingml/2006/main}srgbClr"), c["a"])
         if r.get("spc"):
             run._r.get_or_add_rPr().set("spc", str(round(r["spc"] / 2 * 100)))
 
@@ -113,10 +116,10 @@ def export(model: list[dict], notes: list[str], title: str, author: str, dest: P
                     used_title, ph = True, slide.shapes.title
                     ph.left, ph.top, ph.width, ph.height = (Emu(_emu(it[k])) for k in ("x", "y", "w", "h"))
                     ph.text_frame.clear()
-                    _text(ph.text_frame, it)
+                    _text(ph.text_frame, it, sl.get("bg"))
                 else:
                     tb = slide.shapes.add_textbox(*(Emu(_emu(it[k])) for k in ("x", "y", "w", "h")))
-                    _text(tb.text_frame, it)
+                    _text(tb.text_frame, it, sl.get("bg"))
                     tb.name = "Text"
             elif it["t"] in ("svg", "image"):
                 data = io.BytesIO(it["png"]) if it["t"] == "svg" else _read_image(it["src"], base)
@@ -199,8 +202,8 @@ def gate(path: Path, expected: list[str], pages: int) -> list[str]:
             problems.append(f"pptx slide {i}: font outside the vendored faces: {', '.join(sorted(map(str, fonts - FONTS)))}")
         if i <= len(expected):
             want, got = _words(expected[i - 1]), _words(have)
-            if want != got:
-                miss = sorted((want - got).elements())[:6]
-                extra = sorted((got - want).elements())[:6]
+            miss = sorted((want - got).elements())[:6]
+            extra = sorted(t for t in (got - want).elements() if re.search(r"\w", t))[:6]  # a decorative mark is no text
+            if miss or extra:
                 problems.append(f"pptx slide {i}: text differs from the page (missing {miss}, extra {extra})")
     return problems

@@ -48,7 +48,7 @@ body { font-family: var(--sans); color: var(--ink); }
 
 /* Quote slides */
 .quote { font-size: 54px; line-height: 1.32; font-weight: 400; max-width: 1560px; position: relative; padding-left: 64px; }
-.quote::before { content: "\201C"; position: absolute; left: -14px; top: -40px; font-size: 200px; color: var(--accent); opacity: .35; font-family: serif; }
+.quote::before { content: "\201C"; position: absolute; left: -44px; top: -44px; font-size: 200px; color: var(--accent); opacity: .35; font-family: var(--serif); }
 .quote .em { color: var(--accent); font-weight: 600; }
 .who { margin-top: 36px; padding-left: 64px; font-size: 28px; color: var(--ink2); }
 
