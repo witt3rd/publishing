@@ -177,6 +177,31 @@ class Renderer:
             page.close()
         return result, sorted(set(remote))
 
+    def deck_model(self, html: Path) -> list[dict]:
+        """The slides of a deck page as shapes for the PPTX export (pptxmodel.js), SVG figures as transparent
+        PNGs without their text (the text is its own shape)."""
+        from importlib import resources
+        script = resources.files("publishing").joinpath("pptxmodel.js").read_text()
+        page = self._browser.new_page(viewport={"width": 1920, "height": 1080})
+        try:
+            page.goto(html.resolve().as_uri(), wait_until="load")
+            page.evaluate("Promise.all([...document.fonts].map((f) => f.load())).then(() => document.fonts.ready).then(() => true)")
+            model = page.evaluate(script)
+        finally:
+            page.close()
+        for sl in model:
+            for it in sl["items"]:
+                if it["t"] == "svg":
+                    p2 = self._browser.new_page(viewport={"width": max(1, round(it["w"])), "height": max(1, round(it["h"]))},
+                                                device_scale_factor=2)
+                    try:
+                        p2.set_content('<!doctype html><html><body style="margin:0;background:transparent">'
+                                       + it.pop("markup") + "</body></html>")
+                        it["png"] = p2.screenshot(omit_background=True)
+                    finally:
+                        p2.close()
+        return model
+
     def pdf(self, html: Path, out: Path, *, kind: str, paper: str = "letter") -> tuple[list[str], str]:
         """Render `html` to `out`. Returns the layout-lint problems (empty is clean) and the text as
         printed (innerText: after text-transform, unlike text read back from letter-spaced PDF glyphs).

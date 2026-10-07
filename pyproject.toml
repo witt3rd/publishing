@@ -23,6 +23,8 @@ render = [
   "pypdf==6.19.0",
   "pypdfium2==5.13.0",
   "pillow==12.3.0",
+  "python-pptx==1.0.2",     # the explainer deck's editable PPTX
+  "lxml==6.1.3",
 ]
 # The video format: the render profile, and HyperFrames on this Node (>=22); HyperFrames' own version is
 # pinned in src/publishing/hyperframes/package-lock.json and installed by `publishing setup --video`.

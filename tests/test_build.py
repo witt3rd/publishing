@@ -196,3 +196,73 @@ def test_explainer_lint_refuses_a_title_that_wraps(repo, renderer):
     cfg = load(folder)
     with pytest.raises(BuildError, match="title wraps"):
         build(resolve(folder, cfg), cfg, renderer)
+
+
+def test_explainer_pptx_is_editable_with_notes_and_checks_current(repo, renderer):
+    from pptx import Presentation
+
+    from publishing import pptx
+    folder = new(repo, "talk-v1", "explainer")
+    cfg = load(folder)
+    s = resolve(folder, cfg)
+    assert build(s, cfg, renderer) == "built"
+    assert s.pptx.is_file() and s.pptx.name == "talk-v1.pptx"
+    prs = Presentation(str(s.pptx))
+    texts, notes = pptx.slide_texts(s.pptx)
+    assert len(prs.slides) == pdf.pages(s.pdf) == 4
+    assert all(n.strip() for n in notes) and notes[1].endswith("Source: Say where the evidence comes from")
+    assert "One sentence the audience should keep" in texts[1] and "Output" in texts[2]  # text, also in the diagram
+    assert prs.slides[1].shapes.title.text_frame.text == "One sentence the audience should keep"
+    assert all(sh.shape_type != 13 or sh.width * sh.height < prs.slide_width * prs.slide_height * 0.8
+               for sl in prs.slides for sh in sl.shapes)
+    assert build(s, cfg, renderer) == "current"
+    assert check(s, cfg, renderer) is None
+    s.pptx.unlink()
+    assert "missing" in check(s, cfg, renderer)
+    assert build(s, cfg, renderer) == "built" and check(s, cfg, renderer) is None
+
+
+def test_explainer_check_finds_a_stale_pptx(repo, renderer):
+    folder = new(repo, "talk-v1", "explainer")
+    cfg = load(folder)
+    s = resolve(folder, cfg)
+    build(s, cfg, renderer)
+    src = (folder / "explainer.py").read_text()
+    other = new(repo, "talk-v2", "explainer")
+    (other / "explainer.py").write_text(src.replace("Walk the three lines in order", "Walk the lines in the order given"))
+    s2 = resolve(other, load(other))
+    build(s2, cfg, renderer)
+    s.pptx.write_bytes(s2.pptx.read_bytes())  # right PDF, another deck's notes
+    assert "stale" in check(s, cfg, renderer)
+
+
+def test_pptx_gate_refuses_a_flattened_slide_and_missing_notes(tmp_path):
+    from pptx import Presentation
+    from pptx.util import Emu
+
+    from publishing import pptx
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Emu(12192000), Emu(6858000)
+    sl = prs.slides.add_slide(prs.slide_layouts[6])
+    from PIL import Image
+    img = tmp_path / "s.png"
+    Image.new("RGB", (64, 36), "white").save(img)
+    sl.shapes.add_picture(str(img), 0, 0, prs.slide_width, prs.slide_height)
+    prs.save(tmp_path / "flat.pptx")
+    problems = pptx.gate(tmp_path / "flat.pptx", ["Some words on the slide"], 1)
+    text = "\n".join(problems)
+    assert "no speaker notes" in text and "flattened" in text and "text differs" in text
+    assert pptx.gate(tmp_path / "flat.pptx", ["x"], 2)[0].startswith("pptx: 1 slides for 2")
+
+
+def test_publish_copies_the_pptx_with_the_pdf(repo, renderer, tmp_path, monkeypatch):
+    from publishing.publish import publish
+    monkeypatch.setenv("PUBLISHING_DOCUMENTS", str(tmp_path / "Documents"))
+    folder = new(repo, "talk-v1", "explainer")
+    cfg = load(folder)
+    s = resolve(folder, cfg)
+    build(s, cfg, renderer)
+    state, target = publish(s, cfg)
+    assert state == "published" and target.suffix == ".pdf"
+    assert (target.parent / "talk-v1.pptx").read_bytes() == s.pptx.read_bytes()
+    assert publish(s, cfg)[0] == "already published"
