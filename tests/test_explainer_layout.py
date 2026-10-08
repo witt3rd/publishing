@@ -65,3 +65,16 @@ def test_story_and_two_column_cards_are_compact(renderer, tmp_path):
     m = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("L", "hit", ["a", "b"]), ("R", "red", ["a", "b"]),
                                                        notes="n"), [".cards .card"])
     assert all(c[3] < 340 for c in m[".cards .card"])
+
+
+def test_section_title_sits_below_the_kicker_and_the_source_label_reads(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.section("Part two", "Starting your own", "Sub", number="2", src="S",
+                                                        notes="n"), ["h1", ".kicker"])
+    assert m["h1"][0][1] - (m[".kicker"][0][1] + m[".kicker"][0][3]) >= 115  # the exemplar gap (~205px from the kicker top)
+
+
+def test_sub_lines_move_quote_and_two_column_bodies_down(renderer, tmp_path):
+    a = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("L", "hit", ["a"]), ("R", "red", ["b"]), notes="n"), [".cards"])
+    b = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("L", "hit", ["a"]), ("R", "red", ["b"]), sub="S", notes="n"),
+                [".cards", "h2"])
+    assert b[".cards"][0][1] == a[".cards"][0][1] + 40 and b["h2"]

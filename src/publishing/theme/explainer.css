@@ -40,10 +40,11 @@ body { font-family: var(--sans); color: var(--ink); }
 .slide.title .rule { border-color: #3a4256; }
 .slide.section { background: var(--accent); color: #fff; padding: 220px 160px; }
 .slide.section .big { font-size: 260px; font-weight: 800; line-height: 1; opacity: .25; position: absolute; right: 140px; top: 120px; }
-.slide.section h1 { font-size: 92px; color: #fff; max-width: 1350px; }
+.slide.section h1 { font-size: 92px; color: #fff; max-width: 1350px; margin-top: 120px; }  /* the exemplar's gap under the kicker */
 .slide.section h2 { color: #e4e0ff; font-size: 40px; max-width: 1300px; }
 .slide.section .kicker { color: #fff; opacity: .8; }
 .slide.section .foot { color: #d6d1ff; }
+.slide.title .foot .src b, .slide.section .foot .src b { color: inherit; }  /* the label reads on the dark and purple grounds */
 .slide.section .rule { border-color: #7d70e3; }
 
 /* Quote slides */

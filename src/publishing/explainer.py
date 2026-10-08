@@ -101,8 +101,9 @@ class Explainer:
                 f'<ul class="points big">{pts}</ul></div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
-    def quote(self, kicker, title, words, who="", *, src="", notes=""):
-        page = (f'<section class="slide">{self._head(kicker, title)}<div class="body"><div class="quote">{words}</div>'
+    def quote(self, kicker, title, words, who="", sub="", *, src="", notes=""):
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body" style="top:{340 if sub else 300}px">'
+                f'<div class="quote">{words}</div>'
                 + (f'<div class="who">{esc(who)}</div>' if who else "") + f"</div>{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
@@ -169,14 +170,15 @@ class Explainer:
                 f"{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
-    def twocol(self, kicker, title, left, right, *, top=300, src="", notes=""):
+    def twocol(self, kicker, title, left, right, sub="", *, top=None, src="", notes=""):
         """Two cards: (heading, colour, [points]) each."""
         def col(c):
             h, colr, pts = c
             li = "".join(f"<li>{p}</li>" for p in pts)
             return (f'<div class="card" style="border-top:10px solid {_color(colr)}"><h3 style="color:{_color(colr)}">'
                     f'{esc(h)}</h3><ul class="points mid">{li}</ul></div>')
-        page = (f'<section class="slide">{self._head(kicker, title)}<div class="body cards" style="top:{top}px; '
+        top = top if top is not None else (340 if sub else 300)
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards" style="top:{top}px; '
                 f'grid-template-columns:1fr 1fr">{col(left)}{col(right)}</div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
