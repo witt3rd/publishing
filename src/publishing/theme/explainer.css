@@ -33,7 +33,7 @@ body { font-family: var(--sans); color: var(--ink); }
 
 /* Title and section slides */
 .slide.title { background: var(--ink); color: #fff; padding: 140px 160px; }
-.slide.title h1 { font-size: 96px; color: #fff; max-width: 1500px; }
+.slide.title h1 { font-size: 96px; /* the cover title sets its own size inline (cover_size) */ color: #fff; max-width: 1500px; }
 .slide.title h2 { color: #c9cbe0; font-size: 40px; max-width: 1400px; }
 .slide.title .kicker { color: #b3a9ff; }
 .slide.title .foot { color: #8f93ad; }
@@ -100,8 +100,10 @@ body { font-family: var(--sans); color: var(--ink); }
 .dim2 { font-size:22px; color:var(--muted); }
 
 /* Slide kinds: title (presenter), cards (lesson bar), agenda (numbered outline cards), story, map, contrast, two columns, closing numbers. */
-.slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 30px; color: #c9cbe0; }
+.slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 34px; color: #c9cbe0; }
 .slide.title h1.first { margin-top: 170px; }
+.slide.title h1.first.big { margin-top: 150px; letter-spacing: -0.02em; }
+.slide.title h1.first.big + h2 { margin-top: 40px; }
 .card .points li { margin-bottom: 16px; }
 .cards .card p { font-size: 30px; }
 .card .points li::before { top: 14px; }
