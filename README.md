@@ -208,7 +208,7 @@ TITLE, S, NOTES, AUTHOR = x.TITLE, x.S, x.NOTES, x.AUTHOR
   (before, after, three examples), `twocol`, `closing` (three big figures). Headings and labels are escaped; points and
   paragraphs are HTML from your own code. Palette names (`accent`, `detour`, `hit`, `missed`, `red`) or `#hex` colour a card.
 - **Cover title.** `title` sets its headline as large as one line allows: 200px for a short title (the house exemplar's
-  cover), shrinking with length to a 96px floor.
+  cover), shrinking with length to an 72px floor.
 - **Notes are required.** Every slide takes `notes=` (what the presenter says; the build refuses a slide without) and `src=`
   (the small print, which also ends the notes as `Source: ...`). The notes go through the same house scan as the slides.
 - **Layout lint** (the house deck lint plus): the slide number `n / total` bottom right, the title on one line, header and

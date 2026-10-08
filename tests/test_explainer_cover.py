@@ -31,7 +31,7 @@ def measure(renderer, tmp_path, build, selectors):
 def test_cover_title_size_follows_its_length():
     assert cover_size("Prospecta") == 200 and cover_size("A") == 200
     assert COVER_MIN < cover_size("Title of the explainer") < 200
-    assert cover_size("How a community tool shed runs") == COVER_MIN and cover_size("x" * 200) == COVER_MIN
+    assert COVER_MIN <= cover_size("How a community tool shed runs") < 96 and cover_size("x" * 200) == COVER_MIN
 
 
 def test_cover_matches_the_exemplar(renderer, tmp_path):
@@ -47,4 +47,18 @@ def test_cover_matches_the_exemplar(renderer, tmp_path):
 
 def test_a_long_cover_title_keeps_the_old_position(renderer, tmp_path):
     m = measure(renderer, tmp_path, lambda x: x.title("K", "How a community tool shed runs", "Sub", notes="n"), ["h1"])
-    assert m["h1"][0][1] == pytest.approx(170 + 170, abs=2)
+    assert m["h1"][0][1] == pytest.approx(170 + 150, abs=22)
+
+
+def test_a_mid_length_cover_title_stays_on_one_line_with_a_gap_to_the_subtitle(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.title("K", "How a community tool shed runs", "A subtitle", notes="n"),
+                ["h1", "h2"])
+    h1, h2 = m["h1"][0], m["h2"][0]
+    assert h1[3] < 1.2 * cover_size("How a community tool shed runs")  # one line, no orphan word
+    assert h2[1] - (h1[1] + h1[3]) == pytest.approx(40, abs=3)
+
+
+def test_a_cover_title_too_long_for_one_line_wraps_balanced(renderer, tmp_path):
+    t = "How a community tool shed keeps its drills and ladders stocked all year round"
+    m = measure(renderer, tmp_path, lambda x: x.title("K", t, "Sub", notes="n"), ["h1"])
+    assert m["h1"][0][3] > 1.5 * COVER_MIN  # wraps

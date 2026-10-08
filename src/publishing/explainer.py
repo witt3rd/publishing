@@ -28,13 +28,13 @@ TOTAL = "%%TOTAL%%"  # replaced with the slide count at build time
 PALETTE = {"accent", "detour", "hit", "approx", "missed", "red", "ink", "ink2", "muted", "unreached"}
 
 
-COVER_MAX, COVER_MIN = 200, 96  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
+COVER_MAX, COVER_MIN = 200, 72  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
 
 
 def cover_size(title: str) -> int:
     """The cover title's font size: 200px for a short title, smaller as it lengthens so it stays on one line of
-    the 1500px column (about 0.6em a character), never under 96px."""
-    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.6 * max(len(title), 1)))))
+    the 1500px column (about 0.66em a character, bold Noto Sans), never under 72px; a title that still does not fit wraps balanced."""
+    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.66 * max(len(title), 1)))))
 
 
 def esc(text: str) -> str:
