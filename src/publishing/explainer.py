@@ -4,7 +4,7 @@
     x = Explainer(__file__, "Title of the deck", author="Example Author")
     x.title("Kicker", "Title", "One-line subtitle", notes="What the presenter says.")
     x.statement("The point", "Headline", ["<b>Idea.</b> One per line"], src="Where it comes from", notes="...")
-    x.diagram("The loop", "Headline", "diagram.svg", src="...", notes="...")
+    x.diagram("The loop", "Headline", "diagram.svg", takeaway=("In short", "The one sentence to keep."), src="...", notes="...")
     x.cards("Three jobs", "Headline", [("Name", "Words", "accent"), ...], lesson=("Why", "Words"), notes="...")
     x.story("A lesson", "Headline", what="...", why="...", fix="...", lesson="...", notes="...")
     x.map("The mapping", "Headline", ("Ours", "Theirs", "Same?"), [("a", "b", "same", "same idea")], notes="...")
@@ -93,13 +93,15 @@ class Explainer:
                 + (f'<div class="who">{esc(who)}</div>' if who else "") + f"</div>{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
-    def diagram(self, kicker, title, svg, sub="", *, top=None, src="", notes=""):
-        """`svg`: a file in the source folder, inlined so its text uses the vendored fonts."""
+    def diagram(self, kicker, title, svg, sub="", *, takeaway=None, top=None, src="", notes=""):
+        """`svg`: a file in the source folder, inlined so its text uses the vendored fonts. `takeaway`: (label, words),
+        a dark bar under the diagram (the cards' lesson bar) that says what to take from it."""
         text = (self.here / svg).read_text()
         text = text[text.index("<svg"):]
         top = top if top is not None else (300 if sub else 250)
+        bar = f'<div class="lesson"><span>{esc(takeaway[0])}</span>{takeaway[1]}</div>' if takeaway else ""
         page = (f'<section class="slide">{self._head(kicker, title, sub)}'
-                f'<div class="diagram" style="top:{top}px">{text}</div>{self._foot(src)}</section>')
+                f'<div class="diagram{" barred" if takeaway else ""}" style="top:{top}px">{text}</div>{bar}{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
     def cards(self, kicker, title, cards, sub="", *, cols=3, lesson=None, top=None, src="", notes=""):
