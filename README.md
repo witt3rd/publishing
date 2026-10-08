@@ -201,8 +201,9 @@ x.statement("The point", "Headline", ["<b>Idea.</b> One per line"], src="Source 
 TITLE, S, NOTES, AUTHOR = x.TITLE, x.S, x.NOTES, x.AUTHOR
 ```
 
-- **Slides.** `title`, `section`, `statement`, `quote`, `diagram` (an SVG from the folder, inlined; the figure box is 1760px wide, so draw it with a 1760-wide viewBox), `cards` (with a
-  lesson bar), `story` (what went wrong, why it got through, the rule), `map` (a table with status chips), `contrast`
+- **Slides.** `title`, `section`, `agenda` (numbered outline cards), `statement`, `quote`, `diagram` (an SVG from the
+  folder, inlined; the figure box is 1760px wide, so draw it with a 1760-wide viewBox), `cards` (with a lesson bar), `story`
+  (what went wrong, why it got through, the rule), `map` (a table with status chips), `contrast`
   (before, after, three examples), `twocol`, `closing` (three big figures). Headings and labels are escaped; points and
   paragraphs are HTML from your own code. Palette names (`accent`, `detour`, `hit`, `missed`, `red`) or `#hex` colour a card.
 - **Notes are required.** Every slide takes `notes=` (what the presenter says; the build refuses a slide without) and `src=`

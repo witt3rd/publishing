@@ -6,6 +6,7 @@
     x.statement("The point", "Headline", ["<b>Idea.</b> One per line"], src="Where it comes from", notes="...")
     x.diagram("The loop", "Headline", "diagram.svg", src="...", notes="...")
     x.cards("Three jobs", "Headline", [("Name", "Words", "accent"), ...], lesson=("Why", "Words"), notes="...")
+    x.agenda("Nine parts", "Headline", [("What it is", "One line of words"), ("How it works", "...")], notes="...")
     x.story("A lesson", "Headline", what="...", why="...", fix="...", lesson="...", notes="...")
     x.map("The mapping", "Headline", ("Ours", "Theirs", "Same?"), [("a", "b", "same", "same idea")], notes="...")
     x.contrast("Before and after", "Headline", ("Before", "Now"), "old way", "new way", [("Case", "text")], notes="...")
@@ -110,6 +111,15 @@ class Explainer:
         bar = f'<div class="lesson"><span>{esc(lesson[0])}</span>{lesson[1]}</div>' if lesson else ""
         page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards{" lessoned" if lesson else ""}" '
                 f'style="top:{top}px; grid-template-columns:repeat({cols},1fr)">{body}</div>{bar}{self._foot(src)}</section>')
+        return self._add(page, notes, src)
+
+    def agenda(self, kicker, title, items, sub="", *, cols=3, top=None, src="", notes=""):
+        """The outline: numbered cards, `items` as (heading, words) tuples, numbered from 1 in order."""
+        body = "".join(f'<div class="item"><div class="n">{i}</div><h3>{esc(h)}</h3><p>{p}</p></div>'
+                       for i, (h, p) in enumerate(items, 1))
+        top = top if top is not None else (340 if sub else 270)
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body agenda" '
+                f'style="top:{top}px; grid-template-columns:repeat({cols},1fr)">{body}</div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
     def story(self, kicker, title, *, what, why, fix, lesson, sub="", top=330, src="", notes=""):
