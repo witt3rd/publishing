@@ -10,5 +10,6 @@ It rasterises both PDFs (`pdftoppm`, 54 dpi) and joins like kinds side by side (
 ImageMagick, one page per pair: cover, agenda, statement, diagram, cards, story, map, contrast, two columns,
 section, closing. Edit the `pairs` line in the script when the sample's order changes.
 
-Known, deliberate gaps: the exemplar's PPTX is page images (the sample's is native, editable text); NotoSans
-ExtraBold is not vendored (numerals use Bold); no heat-map kind or diagram callout band.
+Known, deliberate gap: the exemplar's PPTX is page images (the sample's is native, editable text). Since v0.17.0
+NotoSans ExtraBold is vendored, and `diagram(callout=)`, `heatmap` and `twocol(outline=True)` cover the exemplar's callout
+band, heat-map and good/weak panels.

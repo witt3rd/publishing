@@ -274,9 +274,9 @@ def test_the_explainer_sample_is_current_and_has_every_slide_kind(renderer):
     cfg = load(sample)
     s = resolve(sample, cfg)
     assert check(s, cfg, renderer) is None
-    assert pdf.pages(s.pdf) == 12
+    assert pdf.pages(s.pdf) == 13
     html = (sample / "explainer.py").read_text()
-    for kind in ("title", "agenda", "section", "statement", "quote", "diagram", "cards", "story", "map", "contrast", "twocol", "closing"):
+    for kind in ("title", "agenda", "section", "statement", "quote", "diagram", "cards", "story", "map", "heatmap", "contrast", "twocol", "closing"):
         assert f"x.{kind}(" in html
 
 def test_explainer_notes_must_match_the_slides_even_when_set_by_hand(repo, renderer):

@@ -78,6 +78,10 @@ body { font-family: var(--sans); color: var(--ink); }
 /* Diagram slides */
 .diagram { position: absolute; left: 80px; right: 80px; top: 270px; bottom: 112px; }  /* 1760 wide: a figure drawn 1760 wide keeps its scale */
 .diagram.barred { bottom: 250px; }  /* clear of the takeaway bar (.lesson: 100px tall, 120px up) */
+.diagram.called { bottom: 194px; }  /* clear of the callout band (44px tall, 120px up) and 30px of air */
+.diagram.barred.called { bottom: 314px; }  /* ... and of the takeaway bar below it (band 20px above the bar) */
+.callout { position: absolute; left: 120px; right: 120px; bottom: 120px; height: 44px; box-sizing: border-box; background: var(--accent-soft); border-radius: 12px; color: var(--accent); font-size: 28px; font-weight: 700; line-height: 44px; padding: 0 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.callout.barred { bottom: 240px; }  /* 20px above the takeaway bar (top at 860) */
 .diagram svg { width: 100%; height: 100%; }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
 
@@ -145,3 +149,14 @@ body { font-family: var(--sans); color: var(--ink); }
 .ev { background: #273049; border-radius: 18px; padding: 30px 32px; }
 .evn { font-size: 64px; font-weight: 800; color: #b3a9ff; line-height: 1; margin-bottom: 18px; }
 .evt { font-size: 25px; line-height: 1.4; color: #e6e7f2; }
+
+/* Heat-map: row labels, cells shaded by value (inline, so the PPTX carries the fill), the row's best outlined, last column head in accent. */
+.heatmap { position: absolute; left: 120px; right: 120px; display: grid; gap: 8px; align-content: start; grid-auto-rows: 60px; }
+.hm-h { font-size: 17px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; text-align: center; align-self: end; padding-bottom: 6px; }
+.hm-h.last { color: var(--accent); }
+.hm-r { display: flex; flex-direction: column; justify-content: center; padding-right: 16px; }
+.hm-r b { font-size: 26px; line-height: 1.1; font-weight: 700; color: var(--ink); }
+.hm-r span { font-size: 18px; line-height: 1.2; color: var(--muted); }
+.hm-c { display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 26px; font-weight: 600; color: var(--ink); border: 3px solid transparent; box-sizing: border-box; }
+.hm-c.dark { color: #fff; }
+.hm-c.best { border-color: var(--ink); font-weight: 800; }
