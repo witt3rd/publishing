@@ -33,7 +33,7 @@ body { font-family: var(--sans); color: var(--ink); }
 
 /* Title and section slides */
 .slide.title { background: var(--ink); color: #fff; padding: 140px 160px; }
-.slide.title h1 { font-size: 96px; color: #fff; max-width: 1500px; }
+.slide.title h1 { font-size: 96px; /* the cover title sets its own size inline (cover_size) */ color: #fff; max-width: 1500px; }
 .slide.title h2 { color: #c9cbe0; font-size: 40px; max-width: 1400px; }
 .slide.title .kicker { color: #b3a9ff; }
 .slide.title .foot { color: #8f93ad; }
@@ -75,7 +75,7 @@ body { font-family: var(--sans); color: var(--ink); }
 .side .badges { margin-top: 26px; display: flex; gap: 12px; flex-wrap: wrap; }
 
 /* Diagram slides */
-.diagram { position: absolute; left: 120px; right: 120px; top: 270px; bottom: 112px; }
+.diagram { position: absolute; left: 80px; right: 80px; top: 270px; bottom: 112px; }  /* 1760 wide: a figure drawn 1760 wide keeps its scale */
 .diagram.barred { bottom: 250px; }  /* clear of the takeaway bar (.lesson: 100px tall, 120px up) */
 .diagram svg { width: 100%; height: 100%; }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
@@ -99,13 +99,20 @@ body { font-family: var(--sans); color: var(--ink); }
 .stat b { font-size:52px; color:var(--accent); margin-right:10px; vertical-align:-6px; }
 .dim2 { font-size:22px; color:var(--muted); }
 
-/* Slide kinds: title (presenter), cards (lesson bar), story, map, contrast, two columns, closing numbers. */
-.slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 30px; color: #c9cbe0; }
+/* Slide kinds: title (presenter), cards (lesson bar), agenda (numbered outline cards), story, map, contrast, two columns, closing numbers. */
+.slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 34px; color: #c9cbe0; }
 .slide.title h1.first { margin-top: 170px; }
+.slide.title h1.first.big { margin-top: 150px; letter-spacing: -0.02em; }
+.slide.title h1.first.big + h2 { margin-top: 40px; }
 .card .points li { margin-bottom: 16px; }
 .cards .card p { font-size: 30px; }
 .card .points li::before { top: 14px; }
 .cards.lessoned { bottom: 250px; align-content: stretch; }
+.agenda { display: grid; gap: 22px; align-content: start; }
+.agenda .item { padding: 19px 28px; }  /* a .card (background, radius, ring) with the outline's own padding */
+.agenda .n { font-size: 54px; line-height: 1; font-weight: 800; color: var(--accent); opacity: .3; margin-bottom: 4px; }
+.agenda h3 { margin: 0; font-size: 34px; line-height: 1.2; font-weight: 700; color: var(--ink); }
+.agenda p { margin: 8px 0 0 0; font-size: 24px; line-height: 1.3; color: var(--ink2); }
 .card.accent-top { border-top: 10px solid var(--accent); }
 .points.big { font-size: 38px; }
 .points.mid { font-size: 34px; }

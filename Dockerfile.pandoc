@@ -17,7 +17,7 @@
 # base digest's release and recorded in the image (`pdflatex --version`). Outputs are reproducible:
 # SOURCE_DATE_EPOCH and FORCE_SOURCE_DATE fix every date and the PDF's trailer id.
 # In an existing glibc image (python3, a TeX install) the same two steps are:
-#   uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.14.0'
+#   uv tool install 'publishing[pandoc] @ git+https://github.com/witt3rd/publishing@v0.15.0'
 #   publishing setup --pandoc --bin-dir /usr/local/bin
 FROM ghcr.io/astral-sh/uv:0.12.22@sha256:f513a91fc62fe7c17567eee97230dd198e43edb8a9fbecca843714a4358fe1bc AS uv
 

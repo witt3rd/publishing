@@ -6,6 +6,7 @@
     x.statement("The point", "Headline", ["<b>Idea.</b> One per line"], src="Where it comes from", notes="...")
     x.diagram("The loop", "Headline", "diagram.svg", takeaway=("In short", "The one sentence to keep."), src="...", notes="...")
     x.cards("Three jobs", "Headline", [("Name", "Words", "accent"), ...], lesson=("Why", "Words"), notes="...")
+    x.agenda("Nine parts", "Headline", [("What it is", "One line of words"), ("How it works", "...")], notes="...")
     x.story("A lesson", "Headline", what="...", why="...", fix="...", lesson="...", notes="...")
     x.map("The mapping", "Headline", ("Ours", "Theirs", "Same?"), [("a", "b", "same", "same idea")], notes="...")
     x.contrast("Before and after", "Headline", ("Before", "Now"), "old way", "new way", [("Case", "text")], notes="...")
@@ -25,6 +26,15 @@ from pathlib import Path
 
 TOTAL = "%%TOTAL%%"  # replaced with the slide count at build time
 PALETTE = {"accent", "detour", "hit", "approx", "missed", "red", "ink", "ink2", "muted", "unreached"}
+
+
+COVER_MAX, COVER_MIN = 200, 96  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
+
+
+def cover_size(title: str) -> int:
+    """The cover title's font size: 200px for a short title, smaller as it lengthens so it stays on one line of
+    the 1500px column (about 0.6em a character), never under 96px."""
+    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.6 * max(len(title), 1)))))
 
 
 def esc(text: str) -> str:
@@ -64,8 +74,11 @@ class Explainer:
 
     @staticmethod
     def _head(kicker: str, title: str, sub: str = "", first: bool = False) -> str:
-        cls = ' class="first"' if first else ""
-        return (f'<div class="kicker">{esc(kicker)}</div><h1{cls}>{esc(title)}</h1>'
+        attrs = ""
+        if first:  # the cover title is as large as one line allows
+            size = cover_size(title)
+            attrs = f' class="first{" big" if size > COVER_MIN else ""}" style="font-size:{size}px"'
+        return (f'<div class="kicker">{esc(kicker)}</div><h1{attrs}>{esc(title)}</h1>'
                 + (f"<h2>{esc(sub)}</h2>" if sub else ""))
 
     # -------------------------------------------------------------- slides
@@ -112,6 +125,15 @@ class Explainer:
         bar = f'<div class="lesson"><span>{esc(lesson[0])}</span>{lesson[1]}</div>' if lesson else ""
         page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards{" lessoned" if lesson else ""}" '
                 f'style="top:{top}px; grid-template-columns:repeat({cols},1fr)">{body}</div>{bar}{self._foot(src)}</section>')
+        return self._add(page, notes, src)
+
+    def agenda(self, kicker, title, items, sub="", *, cols=3, top=None, src="", notes=""):
+        """The outline: numbered cards, `items` as (heading, words) tuples, numbered from 1 in order."""
+        body = "".join(f'<div class="card item"><div class="n">{i}</div><h3>{esc(h)}</h3><p>{p}</p></div>'
+                       for i, (h, p) in enumerate(items, 1))
+        top = top if top is not None else (340 if sub else 270)
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body agenda" '
+                f'style="top:{top}px; grid-template-columns:repeat({cols},1fr)">{body}</div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
     def story(self, kicker, title, *, what, why, fix, lesson, sub="", top=330, src="", notes=""):
