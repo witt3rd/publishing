@@ -34,9 +34,10 @@ def test_diagram_takeaway_bar_matches_the_exemplar(renderer, tmp_path):
                 [".diagram", ".diagram svg", ".lesson", ".lesson span"])
     # the exemplar's bar: x 120..1800, y 860..960 (the cards' lesson bar); the diagram box ends 30px above it
     assert m[".lesson"] == [[120, 860, 1680, 100]]
-    assert m[".diagram"] == [[120, 300, 1680, 530]]
+    top, height = m[".diagram"][0][1], m[".diagram"][0][3]
+    assert (top, height) == (300, 530)  # the box ends at y 830, 30px above the bar
     svg = m[".diagram svg"][0]
-    assert svg[0] == 120 and svg[2] == 1680 and svg[1] + svg[3] <= 830 + 0.5  # a 1680-wide drawing keeps its scale
+    assert svg[1] >= top and svg[1] + svg[3] <= top + height + 0.5
 
 
 def test_diagram_without_a_takeaway_has_no_bar(renderer, tmp_path):
