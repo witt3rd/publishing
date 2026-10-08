@@ -129,7 +129,7 @@ class Explainer:
 
     def agenda(self, kicker, title, items, sub="", *, cols=3, top=None, src="", notes=""):
         """The outline: numbered cards, `items` as (heading, words) tuples, numbered from 1 in order."""
-        body = "".join(f'<div class="item"><div class="n">{i}</div><h3>{esc(h)}</h3><p>{p}</p></div>'
+        body = "".join(f'<div class="card item"><div class="n">{i}</div><h3>{esc(h)}</h3><p>{p}</p></div>'
                        for i, (h, p) in enumerate(items, 1))
         top = top if top is not None else (340 if sub else 270)
         page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body agenda" '
