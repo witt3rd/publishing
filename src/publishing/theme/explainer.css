@@ -40,10 +40,11 @@ body { font-family: var(--sans); color: var(--ink); }
 .slide.title .rule { border-color: #3a4256; }
 .slide.section { background: var(--accent); color: #fff; padding: 220px 160px; }
 .slide.section .big { font-size: 260px; font-weight: 800; line-height: 1; opacity: .25; position: absolute; right: 140px; top: 120px; }
-.slide.section h1 { font-size: 92px; color: #fff; max-width: 1350px; }
+.slide.section h1 { font-size: 92px; color: #fff; max-width: 1350px; margin-top: 120px; }  /* the exemplar's gap under the kicker */
 .slide.section h2 { color: #e4e0ff; font-size: 40px; max-width: 1300px; }
 .slide.section .kicker { color: #fff; opacity: .8; }
 .slide.section .foot { color: #d6d1ff; }
+.slide.title .foot .src b, .slide.section .foot .src b { color: inherit; }  /* the label reads on the dark and purple grounds */
 .slide.section .rule { border-color: #7d70e3; }
 
 /* Quote slides */
@@ -81,14 +82,14 @@ body { font-family: var(--sans); color: var(--ink); }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
 
 /* Cards */
-.cards { display: grid; gap: 28px; }
+.cards { display: grid; gap: 28px; align-content: start; }  /* rows are as tall as their words, as in the house exemplar: a row of cards is not stretched to fill the slide */
 .card { background: var(--card); border-radius: 16px; padding: 30px 32px; box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 0 0 1px var(--line); }
 .card h3 { margin: 0 0 12px 0; font-size: 34px; }
 .card p { margin: 0; font-size: 28px; line-height: 1.38; color: var(--ink2); }
 .card .tag { font-size: 18px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; }
 
 /* Story slides (what went wrong) */
-.story { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; }
+.story { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; align-content: start; }
 .story .card .tag { color: var(--muted); }
 .story .card.what .tag { color: var(--red); }
 .story .card.why .tag { color: var(--missed); }
@@ -102,12 +103,13 @@ body { font-family: var(--sans); color: var(--ink); }
 /* Slide kinds: title (presenter), cards (lesson bar), agenda (numbered outline cards), story, map, contrast, two columns, closing numbers. */
 .slide.title .presenter { position: absolute; left: 160px; bottom: 150px; font-size: 34px; color: #c9cbe0; }
 .slide.title h1.first { margin-top: 170px; }
+.slide.title h1.first { text-wrap: balance; }
+.slide.title h1.first + h2 { margin-top: 40px; }
 .slide.title h1.first.big { margin-top: 150px; letter-spacing: -0.02em; }
-.slide.title h1.first.big + h2 { margin-top: 40px; }
 .card .points li { margin-bottom: 16px; }
 .cards .card p { font-size: 30px; }
 .card .points li::before { top: 14px; }
-.cards.lessoned { bottom: 250px; align-content: stretch; }
+.cards.lessoned { bottom: 250px; }
 .agenda { display: grid; gap: 22px; align-content: start; }
 .agenda .item { padding: 19px 28px; }  /* a .card (background, radius, ring) with the outline's own padding */
 .agenda .n { font-size: 54px; line-height: 1; font-weight: 800; color: var(--accent); opacity: .3; margin-bottom: 4px; }

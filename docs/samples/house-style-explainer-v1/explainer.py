@@ -5,7 +5,7 @@ from publishing.explainer import Explainer
 x = Explainer(__file__, "How a community tool shed runs", author="Example Author")
 
 x.title("Worked example · an invented topic", "How a community tool shed runs",
-        "Lend a drill on Saturday, get it back by Friday: a shed that stays stocked.", "Example Author",
+        "Lend a drill on Saturday, get it back by Friday: a shed that stays stocked.", "Example Author", src="Invented example; no real shed",
         notes="This deck is an invented example. It shows every kind of slide in the explainer format: title, agenda, statement, "
               "diagram, cards, story, mapping table, contrast, two columns, section, quote and closing. The tool shed "
               "is made up, and so is every number in it.")
@@ -26,6 +26,7 @@ x.statement("The point", "A tool shed lends tools, and expects them back",
              "Every tool has a <b>ledger line</b>: what it is, its condition, who gave it.",
              "Because tools come back, the shed <b>needs no budget</b> beyond blades and oil.",
              "<span class='dim'>Nothing is sold; the only currency is a tool returned clean.</span>"],
+            sub="Four ideas carry the whole deck.",
             src="Invented example; no real shed",
             notes="Four ideas carry the deck: borrow for a week, clean it, hang it back, and the ledger line that lets the "
                   "next borrower trust the tool. All of it is an invented example.")
@@ -37,17 +38,24 @@ x.diagram("The loop in one picture", "Tools go out on Saturday and come back by 
                 "on labelled hooks. Borrowers use them and bring them back along the top arrow. That arrow is the whole "
                 "idea: it is why the hooks never stay empty.")
 
-x.cards("Three jobs", "Three volunteers keep the shed open",
+x.cards("Six jobs", "Six jobs keep the shed open",
         [("The registrar", "Writes one ledger line per tool: its name, its condition and who gave it. "
                            "A tool with no line is not hung.", "accent"),
          ("The checker", "Looks at each returned tool: clean, dry, nothing loose. Anything damaged goes to the repair "
                          "bench, never back on a hook.", "detour"),
          ("The host", "Opens the shed on Saturday mornings, hands out tools and explains the one rule: "
-                      "bring it back by Friday.", "hit")],
-        lesson=("Why it works", "Each job is small and has one test, so a new volunteer can start in an hour."),
+                      "bring it back by Friday.", "hit"),
+         ("The mender", "Sharpens, oils and fixes at the repair bench, and signs the ledger line when a tool is fit.",
+          "ink"),
+         ("The stocker", "Watches the gaps on the hooks and asks neighbours for the tools the shed is missing.",
+          "missed"),
+         ("The spare hands", "Not a job yet: anyone who helps on a Saturday and may take a job later.", "unreached")],
+        sub="Each job is small and has one test.",
         src="Invented example",
-        notes="The three jobs. The registrar writes ledger lines. The checker decides what is fit to hang. The host opens "
-              "the shed. The lesson: every job has a single test, which is why a new volunteer is useful quickly.")
+        notes="Six jobs in a grid of two rows. The registrar writes ledger lines. The checker decides what is fit to hang. "
+              "The host opens the shed. The mender fixes what the checker sets aside, and the stocker fills the gaps. "
+              "The last card is grey: a place for helpers who have not taken a job yet. The lesson: every job has a "
+              "single test, which is why a new volunteer is useful quickly.")
 
 x.story("A lesson, with a made-up example", "A rule that came from one loose handle",
         sub="A hammer went out with a cracked handle.",
@@ -90,15 +98,17 @@ x.twocol("What works, what does not", "Keep the rules few and the hooks labelled
                                 "One rule said out loud", "Saturday mornings, always"]),
          ("What does not", "red", ["Tools with no home", "Rules on a long notice board",
                                    "Fines nobody collects", "Opening whenever someone is free"]),
+         sub="Two lists, four short lines each.",
          src="Invented example",
          notes="Two columns, one for what works and one for what does not. Keep each list to four short lines.")
 
 x.section("Part two", "Starting your own", "Three weeks from an empty garage to an open shed.", number="2",
+          src="Invented example",
           notes="A section slide marks a change of subject. Say what comes next in one sentence.")
 
 x.quote("In their words", "What a first-time borrower said",
         "I came for a ladder and left with <span class='em'>the confidence</span> to ask for a second tool next week.",
-        who="An invented borrower",
+        who="An invented borrower", sub="Said at the end of a first Saturday.",
         src="Invented example; no real person",
         notes="A quote slide: read it slowly, then say why it matters. This quote is invented.")
 

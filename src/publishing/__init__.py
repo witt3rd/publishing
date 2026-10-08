@@ -1,2 +1,2 @@
 """House-style publishing: decks, memos and long documents to PDF with one look."""
-__version__ = "0.15.0"
+__version__ = "0.16.0"

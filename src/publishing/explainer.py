@@ -28,13 +28,13 @@ TOTAL = "%%TOTAL%%"  # replaced with the slide count at build time
 PALETTE = {"accent", "detour", "hit", "approx", "missed", "red", "ink", "ink2", "muted", "unreached"}
 
 
-COVER_MAX, COVER_MIN = 200, 96  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
+COVER_MAX, COVER_MIN = 200, 72  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
 
 
 def cover_size(title: str) -> int:
     """The cover title's font size: 200px for a short title, smaller as it lengthens so it stays on one line of
-    the 1500px column (about 0.6em a character), never under 96px."""
-    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.6 * max(len(title), 1)))))
+    the 1500px column (about 0.66em a character, bold Noto Sans), never under 72px; a title that still does not fit wraps balanced."""
+    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.66 * max(len(title), 1)))))
 
 
 def esc(text: str) -> str:
@@ -101,8 +101,9 @@ class Explainer:
                 f'<ul class="points big">{pts}</ul></div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
-    def quote(self, kicker, title, words, who="", *, src="", notes=""):
-        page = (f'<section class="slide">{self._head(kicker, title)}<div class="body"><div class="quote">{words}</div>'
+    def quote(self, kicker, title, words, who="", sub="", *, src="", notes=""):
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body" style="top:{340 if sub else 300}px">'
+                f'<div class="quote">{words}</div>'
                 + (f'<div class="who">{esc(who)}</div>' if who else "") + f"</div>{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
@@ -169,14 +170,15 @@ class Explainer:
                 f"{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
-    def twocol(self, kicker, title, left, right, *, top=300, src="", notes=""):
+    def twocol(self, kicker, title, left, right, sub="", *, top=None, src="", notes=""):
         """Two cards: (heading, colour, [points]) each."""
         def col(c):
             h, colr, pts = c
             li = "".join(f"<li>{p}</li>" for p in pts)
             return (f'<div class="card" style="border-top:10px solid {_color(colr)}"><h3 style="color:{_color(colr)}">'
                     f'{esc(h)}</h3><ul class="points mid">{li}</ul></div>')
-        page = (f'<section class="slide">{self._head(kicker, title)}<div class="body cards" style="top:{top}px; '
+        top = top if top is not None else (340 if sub else 300)
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards" style="top:{top}px; '
                 f'grid-template-columns:1fr 1fr">{col(left)}{col(right)}</div>{self._foot(src)}</section>')
         return self._add(page, notes, src)
 
