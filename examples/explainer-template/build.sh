@@ -6,7 +6,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; src="$(cd "${1:?usage: build.sh SCRIPT_DIR [OUTDIR]}" && pwd)"
 out="${2:-out}"; mkdir -p "$out"; out="$(cd "$out" && pwd)"; name="$(basename "$src")"
-pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.15.0" publishing)
+pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.16.0" publishing)
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
 model="${NARRATE_MODEL:-}"
