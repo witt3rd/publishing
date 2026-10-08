@@ -31,6 +31,7 @@ x.statement("The point", "A tool shed lends tools, and expects them back",
                   "next borrower trust the tool. All of it is an invented example.")
 
 x.diagram("The loop in one picture", "Tools go out on Saturday and come back by Friday", "diagram.svg",
+          takeaway=("In short", "A tool that comes back clean is why the hooks never stay empty."),
           src="Invented example; diagram drawn for this deck",
           notes="Read it left to right. Neighbours give spare tools. The ledger gets one line per tool. The shed hangs them "
                 "on labelled hooks. Borrowers use them and bring them back along the top arrow. That arrow is the whole "
