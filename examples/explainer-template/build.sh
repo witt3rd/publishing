@@ -2,16 +2,16 @@
 # Narrated explainer from a script.md: narration, fitted composition, silent video, one MP4 with both.
 # Needs: uv, ffmpeg, python3, and publishing with the `video` and `narrate` extras (README "Explainer template").
 #   ./build.sh SCRIPT_DIR [OUTDIR]   SCRIPT_DIR holds script.md; OUTDIR default ./out, use a fresh one
-#   NARRATE_MODEL=kokoro|<OpenRouter model>; OPENROUTER_API_KEY (environment only) picks MAI-Voice by default.
+#   NARRATE_MODEL=kokoro|<OpenRouter model>; OPENROUTER_API_KEY (environment only) uses the house voice (elevenlabs/eleven-v4-turbo, Brian) by default, else Kokoro.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"; src="$(cd "${1:?usage: build.sh SCRIPT_DIR [OUTDIR]}" && pwd)"
 out="${2:-out}"; mkdir -p "$out"; out="$(cd "$out" && pwd)"; name="$(basename "$src")"
-pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.13.0" publishing)
+pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.14.0" publishing)
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
 model="${NARRATE_MODEL:-}"
-[ -n "$model" ] || { [ -z "${OPENROUTER_API_KEY:-}" ] || model=microsoft/mai-voice-2.1-flash; }
-args=(); [ -z "$model" ] || [ "$model" = kokoro ] || args=(--model "$model")
+[ -n "$model" ] || { [ -n "${OPENROUTER_API_KEY:-}" ] || model=kokoro; }   # no key: local Kokoro; else the house default
+args=(); [ -z "$model" ] || args=(--tts-model "$model")
 python3 "$here/explain.py" narration "$src/script.md" > "$out/narration.txt"
 "${pub[@]}" narrate "$out/narration.txt" -o "$out" "${args[@]}"   # out/narration.wav and out/narration.json
 mkdir -p "$out/src/$name"

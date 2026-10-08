@@ -99,3 +99,52 @@ def test_openrouter_request(monkeypatch):
     assert seen["auth"] == "Bearer k"
     nr.speak_openrouter("Hi.", "bytedance-seed/seed-audio-1-0", "", key="k")
     assert seen["body"]["input"].endswith("Hi.") and "voice" not in seen["body"]
+
+
+def test_explicit_tts_model_and_voice_reach_the_request_and_the_json(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "k")
+    seen = []
+
+    def speak(text, model, voice, speed=1.0, key=None, **kw):
+        seen.append((model, voice))
+        return b"mp3", "gen"
+
+    monkeypatch.setattr(nr, "speak_openrouter", speak)
+    monkeypatch.setattr(nr, "_decode", lambda mp3: np.zeros(2400, dtype="<i2"))
+    script = tmp_path / "s.txt"
+    script.write_text(SCRIPT)
+    _, js = nr.narrate(script, tmp_path / "o", model="elevenlabs/eleven-v4-turbo", voice="Rachel")
+    assert set(seen) == {("elevenlabs/eleven-v4-turbo", "Rachel")}
+    meta = json.loads(js.read_text())
+    assert (meta["tts_model"], meta["tts_voice"]) == ("elevenlabs/eleven-v4-turbo", "Rachel")
+
+
+def test_json_names_the_tts_model_and_voice(tmp_path):
+    script = tmp_path / "s.txt"
+    script.write_text(SCRIPT)
+    _, js = nr.narrate(script, tmp_path / "o", synth=fake_synth)
+    meta = json.loads(js.read_text())
+    assert meta["tts_model"] is None and meta["tts_voice"] is None
+
+
+def test_report_toml_narrate_defaults_and_flags_win(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "report.toml").write_text('[narrate]\ntts_model = "fish-audio/s2.1-pro"\nvoice = "v1"\n')
+    (tmp_path / "docs" / "s.txt").write_text(SCRIPT)
+    assert nr.config_defaults(tmp_path / "docs" / "s.txt") == ("fish-audio/s2.1-pro", "v1")
+    assert nr.config_defaults(tmp_path.parent / "nowhere.txt") == (None, None)
+    p = nr.argparse.ArgumentParser()
+    nr.add_arguments(p)
+    a = p.parse_args(["x.txt", "--tts-model", "elevenlabs/eleven-v4-turbo", "--voice", "Rachel"])
+    assert (a.model, a.voice) == ("elevenlabs/eleven-v4-turbo", "Rachel")
+    assert p.parse_args(["x.txt", "--model", "m"]).model == "m"  # the old name still works
+
+
+def test_house_default_is_brian_on_eleven_v4_turbo_and_explicit_wins():
+    assert nr.resolve(None, None) == ("elevenlabs/eleven-v4-turbo", "Brian")
+    assert nr.resolve(None, "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
+    assert nr.resolve("fish-audio/s2.1-pro", None) == ("fish-audio/s2.1-pro", None)
+    assert nr.resolve("elevenlabs/eleven-v4-turbo", "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
+    assert nr.resolve("kokoro", None) == (None, None) and nr.resolve("local", "af_sky") == (None, "af_sky")
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", "v1")) == ("fish-audio/s2.1-pro", "v1")  # report.toml beats the house default
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", None)) == ("fish-audio/s2.1-pro", None)

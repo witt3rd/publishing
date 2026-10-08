@@ -1,5 +1,5 @@
 # This repo dogfoods its own tool: CI rebuilds every PDF under docs/ and compares.
-publishing = "0.13.0"
+publishing = "0.14.0"
 project = "Fleet"
 
 [scan]

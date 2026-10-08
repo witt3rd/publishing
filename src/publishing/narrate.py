@@ -19,7 +19,7 @@ paragraph is a scene named scene-1, scene-2, ... The ids are the ids of the vide
 
 Out, in DIR (default: beside the script), never overwritten:
   NAME.wav    every scene's speech in order, each followed by --gap seconds of silence (24 kHz, mono, 16-bit)
-  NAME.json   {"voice", "sample_rate", "duration", "scenes": [{"id", "text", "start", "speech", "duration"}]}
+  NAME.json   {"voice", "tts_model", "tts_voice", "sample_rate", "duration", "scenes": [{"id", "text", "start", "speech", "duration"}]}
               start and duration are in seconds and tile the wav; `speech` is the spoken part of the duration.
               Give each video scene data-start=start and data-duration=duration (README "Narration").
 Its stdout is the two paths. Exit codes: 0 done; 1 synthesis failed or the model download did not verify;
@@ -45,7 +45,10 @@ MODEL_FILES = {  # name -> sha256
     "kokoro-v1.0.onnx": "7d5df8ecf7d4b1878015a32686053fd0eebe2bc377234608764cc0ef3636a6c5",
     "voices-v1.0.bin": "bca610b8308e8d99f32e6fe4197e7ec01679264efed0cac9140fe9c29f1fbf7d",
 }
-VOICE = "af_heart"
+VOICE = "af_heart"  # the Kokoro voice
+LOCAL = ("kokoro", "local")  # --tts-model values that mean local Kokoro
+DEFAULT_MODEL = "elevenlabs/eleven-v4-turbo"  # the house voice for the standalone CLI: Brian (US, deep), via OpenRouter
+DEFAULT_VOICE = "Brian"
 ENDPOINT = "https://openrouter.ai/api/v1/audio/speech"
 MODELS = {  # OpenRouter speech model -> the voice it needs ("" when it takes none)
     "fish-audio/s2.1-pro": "",
@@ -202,7 +205,7 @@ def _decode(mp3: bytes):
 def synthesize_openrouter(scenes, *, model: str, voice: str | None = None, speed: float = 1.0, **_):
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
-        raise Usage("--model needs OPENROUTER_API_KEY in the environment (e.g. `doppler run -- publishing narrate ...`)")
+        raise Usage("--model needs OPENROUTER_API_KEY in the environment (e.g. `doppler run -- publishing narrate ...`; `--tts-model kokoro` is local and needs none)")
     voice = MODELS.get(model, "") if voice is None else voice
     out = []
     for sid, text in scenes:
@@ -262,6 +265,9 @@ def narrate(script, out_dir=None, *, voice: str | None = None, speed: float = 1.
         label = voice or VOICE
         kw = {"voice": label, "speed": speed, "models": models}
     frames, table = lay_out(synth(scenes, **kw), gap, label)
+    # what was asked for, explicitly: the model (null for local Kokoro) and the voice (null: the model's default)
+    table["tts_model"] = model or None
+    table["tts_voice"] = voice
     out_dir.mkdir(parents=True, exist_ok=True)
     with wave.open(str(wav_path), "wb") as w:
         w.setnchannels(1)
@@ -275,7 +281,9 @@ def narrate(script, out_dir=None, *, voice: str | None = None, speed: float = 1.
 def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("script", help="the narration script: `## scene-id` headings, the spoken text under each")
     p.add_argument("-o", "--output-dir", help="where NAME.wav and NAME.json go (default: beside the script; never overwritten)")
-    p.add_argument("--model", help="an OpenRouter speech model instead of local Kokoro (needs OPENROUTER_API_KEY and ffmpeg): "
+    p.add_argument("--tts-model", "--model", dest="model", metavar="MODEL",
+                   help="the OpenRouter speech model, any id (needs OPENROUTER_API_KEY and ffmpeg), or `kokoro` for local, free "
+                   f"speech. Default: report.toml [narrate] tts_model, else {DEFAULT_MODEL} voice {DEFAULT_VOICE}. Known: "
                    + ", ".join(MODELS))
     p.add_argument("--voice", help=f"a Kokoro voice (default {VOICE}), or the model's voice id (default: the one MODELS names)")
     p.add_argument("--speed", type=float, default=1.0, help="speaking speed, 0.5 to 2 (default 1)")
@@ -284,12 +292,44 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.set_defaults(fn=run, needs_render=False)
 
 
+def resolve(model, voice, config=(None, None)):
+    """(model, voice) to synthesize with. Explicit flags win; the standalone default (no --tts-model) is
+    report.toml `[narrate]`, else the house voice (DEFAULT_MODEL, Brian). `kokoro` or `local` is local Kokoro:
+    model None, and the voice a Kokoro one (None: VOICE)."""
+    if model is None:
+        model = config[0] or DEFAULT_MODEL
+        if voice is None:
+            voice = config[1] or (DEFAULT_VOICE if model == DEFAULT_MODEL else None)
+    if model in LOCAL:
+        model = None
+    return model, voice
+
+
+def config_defaults(script) -> tuple[str | None, str | None]:
+    """(tts_model, voice) from report.toml `[narrate]` found from the script's folder, else (None, None).
+    A caller that passes --tts-model or --voice never reaches this: explicit always wins."""
+    import tomllib  # not config.py: that imports the render profile, and narrate runs without it
+    here = Path(script).resolve().parent
+    path = next((c for d in [here, *here.parents] for c in (d / "report.toml", d / "docs" / "report.toml") if c.is_file()), None)
+    if path is None:
+        return None, None
+    try:
+        n = tomllib.loads(path.read_text()).get("narrate", {})
+    except tomllib.TOMLDecodeError as e:
+        raise Usage(f"{path}: {e}") from e
+    for k in ("tts_model", "voice"):
+        if k in n and not isinstance(n[k], str):
+            raise Usage(f"{path}: [narrate] {k} must be a string")
+    return n.get("tts_model") or None, n.get("voice") or None
+
+
 def run(a) -> int:
     try:
         if not 0.5 <= a.speed <= 2 or a.gap < 0:
             raise Usage("--speed is 0.5 to 2 and --gap is not negative")
-        wav, meta = narrate(a.script, a.output_dir, voice=a.voice, speed=a.speed, gap=a.gap, models=a.model_dir,
-                              model=a.model)
+        model, voice = resolve(a.model, a.voice, config_defaults(a.script))
+        wav, meta = narrate(a.script, a.output_dir, voice=voice, speed=a.speed, gap=a.gap, models=a.model_dir,
+                              model=model)
     except NarrateError as e:
         print(f"publishing: {e}", file=sys.stderr)
         return e.exit_code
