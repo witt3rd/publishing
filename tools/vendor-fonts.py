@@ -17,7 +17,7 @@ from pathlib import Path
 from fontTools.ttLib import TTFont
 
 FACES = [
-    "NotoSans-Regular", "NotoSans-Italic", "NotoSans-SemiBold", "NotoSans-Bold", "NotoSans-BoldItalic",
+    "NotoSans-Regular", "NotoSans-Italic", "NotoSans-SemiBold", "NotoSans-Bold", "NotoSans-ExtraBold", "NotoSans-BoldItalic",
     "NotoSerif-Regular", "NotoSerif-Italic", "NotoSerif-Bold", "NotoSerif-BoldItalic",
     "NotoSansMono-Regular", "NotoSansMono-Bold",
     "NotoSansSymbols-Regular", "NotoSansSymbols2-Regular", "NotoSansMath-Regular",

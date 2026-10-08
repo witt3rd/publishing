@@ -4,6 +4,7 @@
 @font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
 @font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; }
 @font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-ExtraBold.woff2") format("woff2"); font-weight: 800; font-style: normal; }
 @font-face { font-family: "Publishing Sans"; src: url("fonts/NotoSans-BoldItalic.woff2") format("woff2"); font-weight: 700; font-style: italic; }
 @font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
 @font-face { font-family: "Publishing Serif"; src: url("fonts/NotoSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
