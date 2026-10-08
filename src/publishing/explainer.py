@@ -27,6 +27,15 @@ TOTAL = "%%TOTAL%%"  # replaced with the slide count at build time
 PALETTE = {"accent", "detour", "hit", "approx", "missed", "red", "ink", "ink2", "muted", "unreached"}
 
 
+COVER_MAX, COVER_MIN = 200, 96  # cover title size in px: a short title fills the cover, a long one shrinks to the floor
+
+
+def cover_size(title: str) -> int:
+    """The cover title's font size: 200px for a short title, smaller as it lengthens so it stays on one line of
+    the 1500px column (about 0.6em a character), never under 96px."""
+    return max(COVER_MIN, min(COVER_MAX, int(1500 / (0.6 * max(len(title), 1)))))
+
+
 def esc(text: str) -> str:
     return html.escape(text, quote=False)
 
@@ -64,8 +73,11 @@ class Explainer:
 
     @staticmethod
     def _head(kicker: str, title: str, sub: str = "", first: bool = False) -> str:
-        cls = ' class="first"' if first else ""
-        return (f'<div class="kicker">{esc(kicker)}</div><h1{cls}>{esc(title)}</h1>'
+        attrs = ""
+        if first:  # the cover title is as large as one line allows
+            size = cover_size(title)
+            attrs = f' class="first{" big" if size > COVER_MIN else ""}" style="font-size:{size}px"'
+        return (f'<div class="kicker">{esc(kicker)}</div><h1{attrs}>{esc(title)}</h1>'
                 + (f"<h2>{esc(sub)}</h2>" if sub else ""))
 
     # -------------------------------------------------------------- slides
