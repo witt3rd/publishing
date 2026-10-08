@@ -78,6 +78,10 @@ body { font-family: var(--sans); color: var(--ink); }
 /* Diagram slides */
 .diagram { position: absolute; left: 80px; right: 80px; top: 270px; bottom: 112px; }  /* 1760 wide: a figure drawn 1760 wide keeps its scale */
 .diagram.barred { bottom: 250px; }  /* clear of the takeaway bar (.lesson: 100px tall, 120px up) */
+.diagram.called { bottom: 194px; }  /* clear of the callout band (44px tall, 120px up) and 30px of air */
+.diagram.barred.called { bottom: 314px; }  /* ... and of the takeaway bar below it (band 20px above the bar) */
+.callout { position: absolute; left: 120px; right: 120px; bottom: 120px; height: 44px; box-sizing: border-box; background: var(--accent-soft); border-radius: 12px; color: var(--accent); font-size: 28px; font-weight: 700; line-height: 44px; padding: 0 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.callout.barred { bottom: 240px; }  /* 20px above the takeaway bar (top at 860) */
 .diagram svg { width: 100%; height: 100%; }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
 

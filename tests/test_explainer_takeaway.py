@@ -43,3 +43,20 @@ def test_diagram_takeaway_bar_matches_the_exemplar(renderer, tmp_path):
 def test_diagram_without_a_takeaway_has_no_bar(renderer, tmp_path):
     m = measure(renderer, tmp_path, lambda x: x.diagram("K", "T", "d.svg", notes="n"), [".diagram", ".lesson"])
     assert m[".lesson"] == [] and m[".diagram"][0][3] == pytest.approx(1080 - 112 - 250, abs=1)
+
+
+def test_diagram_callout_band_sits_above_the_takeaway_bar(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.diagram("K", "T", "d.svg", takeaway=("In short", "Words."),
+                                                        callout="Retain: write it down.", notes="n"),
+                [".diagram", ".callout", ".lesson"])
+    assert m[".lesson"] == [[120, 860, 1680, 100]]
+    assert m[".callout"] == [[120, 796, 1680, 44]]  # 20px above the bar, 44px tall
+    diagram = m[".diagram"][0]
+    assert diagram[1] + diagram[3] <= 796 - 29  # the figure ends clear of the band
+
+
+def test_diagram_callout_without_a_takeaway_sits_at_the_foot(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.diagram("K", "T", "d.svg", callout="Retain.", notes="n"),
+                [".diagram", ".callout"])
+    assert m[".callout"] == [[120, 916, 1680, 44]]
+    assert m[".diagram"][0][1] + m[".diagram"][0][3] <= 916 - 29
