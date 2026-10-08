@@ -33,6 +33,7 @@ x.statement("The point", "A tool shed lends tools, and expects them back",
 
 x.diagram("The loop in one picture", "Tools go out on Saturday and come back by Friday", "diagram.svg",
           takeaway=("In short", "A tool that comes back clean is why the hooks never stay empty."),
+          callout="Return: hang it back clean, and write the date in the ledger.",
           src="Invented example; diagram drawn for this deck",
           notes="Read it left to right. Neighbours give spare tools. The ledger gets one line per tool. The shed hangs them "
                 "on labelled hooks. Borrowers use them and bring them back along the top arrow. That arrow is the whole "
@@ -81,6 +82,15 @@ x.map("The mapping", "A tool shed borrows its habits from a book library",
       notes="A mapping table helps the audience reuse what they already know. Same means the habit carries over "
             "unchanged; differs means we chose another way; ahead and behind mark where the shed is simpler or thinner.")
 
+x.heatmap("The numbers", "Most tools come back, and on time",
+          ["Week 1", "Week 4", "Week 12"],
+          [("Returned", "share of tools out", [("62%", .62), ("81%", .81), ("94%", .94)]),
+           ("On time", "by the Friday deadline", [("48%", .48), ("70%", .70), ("89%", .89)]),
+           ("Clean", "hung back without a note", [("55%", .55), ("77%", .77), ("91%", .91)])],
+          src="Invented example; the figures are made up",
+          notes="A heat-map shades each cell by its value and outlines the best one in its row. The figures are invented; "
+                "read across a row to see the habit settle in.")
+
 x.contrast("Before and after", "From a shared garage to a labelled shed",
            ("Before", "Now"),
            "Tools lived in one garage. Nobody knew what was there, so people bought a second drill and the first "
@@ -98,7 +108,7 @@ x.twocol("What works, what does not", "Keep the rules few and the hooks labelled
                                 "One rule said out loud", "Saturday mornings, always"]),
          ("What does not", "red", ["Tools with no home", "Rules on a long notice board",
                                    "Fines nobody collects", "Opening whenever someone is free"]),
-         sub="Two lists, four short lines each.",
+         sub="Two lists, four short lines each.", outline=True,
          src="Invented example",
          notes="Two columns, one for what works and one for what does not. Keep each list to four short lines.")
 
