@@ -81,14 +81,14 @@ body { font-family: var(--sans); color: var(--ink); }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
 
 /* Cards */
-.cards { display: grid; gap: 28px; }
+.cards { display: grid; gap: 28px; align-content: start; }  /* rows are as tall as their words, as in the house exemplar: a row of cards is not stretched to fill the slide */
 .card { background: var(--card); border-radius: 16px; padding: 30px 32px; box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 0 0 1px var(--line); }
 .card h3 { margin: 0 0 12px 0; font-size: 34px; }
 .card p { margin: 0; font-size: 28px; line-height: 1.38; color: var(--ink2); }
 .card .tag { font-size: 18px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; }
 
 /* Story slides (what went wrong) */
-.story { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; }
+.story { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; align-content: start; }
 .story .card .tag { color: var(--muted); }
 .story .card.what .tag { color: var(--red); }
 .story .card.why .tag { color: var(--missed); }
@@ -108,7 +108,7 @@ body { font-family: var(--sans); color: var(--ink); }
 .card .points li { margin-bottom: 16px; }
 .cards .card p { font-size: 30px; }
 .card .points li::before { top: 14px; }
-.cards.lessoned { bottom: 250px; align-content: stretch; }
+.cards.lessoned { bottom: 250px; }
 .agenda { display: grid; gap: 22px; align-content: start; }
 .agenda .item { padding: 19px 28px; }  /* a .card (background, radius, ring) with the outline's own padding */
 .agenda .n { font-size: 54px; line-height: 1; font-weight: 800; color: var(--accent); opacity: .3; margin-bottom: 4px; }

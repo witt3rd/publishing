@@ -47,3 +47,21 @@ def test_agenda_cards_match_the_exemplar_grid(renderer, tmp_path):
     assert [c[1] for c in cards[::3]] == pytest.approx([270, 498.5, 727], abs=3)
     assert [c[3] for c in cards[::3]] == pytest.approx([207, 207, 176], abs=3)
     assert m[".agenda .n"][0][3] == 54 and m[".agenda h3"][0][3] == pytest.approx(41, abs=1)
+
+
+def test_a_single_row_of_cards_is_compact_not_stretched(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.cards("Three jobs", "Three volunteers", [
+        ("A", "Words " * 12, "accent"), ("B", "Words " * 12, "detour"), ("C", "Words " * 12, "hit")],
+        lesson=("Why", "Words"), notes="n"), [".cards .card"])
+    cards = m[".cards .card"]
+    assert len(cards) == 3 and all(c[3] < 340 for c in cards)  # the exemplar's cards are ~290 tall
+    assert len({c[3] for c in cards}) == 1  # equal heights within the row
+
+
+def test_story_and_two_column_cards_are_compact(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.story("K", "T", what="Short.", why="Short.", fix="Short.",
+                                                      lesson="L", notes="n"), [".story .card"])
+    assert all(c[3] < 340 for c in m[".story .card"])
+    m = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("L", "hit", ["a", "b"]), ("R", "red", ["a", "b"]),
+                                                       notes="n"), [".cards .card"])
+    assert all(c[3] < 340 for c in m[".cards .card"])
