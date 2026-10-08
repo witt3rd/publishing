@@ -1,6 +1,6 @@
 [project]
 name = "publishing"
-version = "0.14.0"
+version = "0.15.0"
 description = "House-style publishing toolchain: decks, memos and long documents to PDF, videos to MP4, HTML to PDF and page images, documents to PDF, docx and html"
 readme = "README.md"
 license = "MIT"
