@@ -6,9 +6,19 @@ x = Explainer(__file__, "How a community tool shed runs", author="Example Author
 
 x.title("Worked example · an invented topic", "How a community tool shed runs",
         "Lend a drill on Saturday, get it back by Friday: a shed that stays stocked.", "Example Author",
-        notes="This deck is an invented example. It shows every kind of slide in the explainer format: title, statement, "
+        notes="This deck is an invented example. It shows every kind of slide in the explainer format: title, agenda, statement, "
               "diagram, cards, story, mapping table, contrast, two columns, section, quote and closing. The tool shed "
               "is made up, and so is every number in it.")
+
+x.agenda("Nine parts", "From borrowing a drill to running the shed",
+         [("The idea", "A shed lends tools and expects them back."), ("The loop", "Out on Saturday, back by Friday."),
+          ("The jobs", "Registrar, checker and host."), ("A lesson", "One loose handle, one new rule."),
+          ("The mapping", "What a tool shed borrows from a library."), ("Before and after", "From a garage to a shed."),
+          ("What works", "Few rules, labelled hooks."), ("Starting out", "Three weeks from an empty garage."),
+          ("The numbers", "A first year, in three figures.")],
+         src="Invented example",
+         notes="The agenda is a grid of numbered cards, one per part, each with a heading and a line of words. Say the "
+               "order the deck will follow; it is invented, like everything in this example.")
 
 x.statement("The point", "A tool shed lends tools, and expects them back",
             ["Neighbours <b>borrow a tool</b> for a week, free, with a name in the ledger.",
