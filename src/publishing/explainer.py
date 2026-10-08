@@ -9,6 +9,7 @@
     x.agenda("Nine parts", "Headline", [("What it is", "One line of words"), ("How it works", "...")], notes="...")
     x.story("A lesson", "Headline", what="...", why="...", fix="...", lesson="...", notes="...")
     x.map("The mapping", "Headline", ("Ours", "Theirs", "Same?"), [("a", "b", "same", "same idea")], notes="...")
+    x.heatmap("Measured", "Headline", ["Plain", "Tuned", "Ours"], [("Recall", "top-5", [(".41", .41), (".63", .63), (".88", .88)])], notes="...")
     x.contrast("Before and after", "Headline", ("Before", "Now"), "old way", "new way", [("Case", "text")], notes="...")
     x.twocol("Two sides", "Headline", ("Left", "red", ["point"]), ("Right", "hit", ["point"]), notes="...")
     x.section("Part two", "Headline", "Subtitle", number="2", notes="...")
@@ -25,6 +26,7 @@ import html
 from pathlib import Path
 
 TOTAL = "%%TOTAL%%"  # replaced with the slide count at build time
+HIT_RGB = (0x2e, 0x9e, 0x6b)  # --hit, the heat-map ramp
 PALETTE = {"accent", "detour", "hit", "approx", "missed", "red", "ink", "ink2", "muted", "unreached"}
 
 
@@ -162,6 +164,30 @@ class Explainer:
                 f"<tbody>{body}</tbody></table></div>{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
+    def heatmap(self, kicker, title, cols, rows, sub="", *, src="", notes=""):
+        """A heat-map table. `cols`: the column headings (the last one in the accent colour); `rows`: (label, small
+        label, [(text, level)...]) with one cell per column, `level` 0..1 shading the cell from white to the hit
+        green; the strongest cell of each row (the first, on a tie) is outlined."""
+        for label, _, cells in rows:
+            if len(cells) != len(cols):
+                raise ValueError(f"heatmap row {label!r}: {len(cells)} cells for {len(cols)} columns")
+            if any(not 0 <= lv <= 1 for _, lv in cells):
+                raise ValueError(f"heatmap row {label!r}: a level is 0..1")
+        head = '<div class="hm-h"></div>' + "".join(
+            f'<div class="hm-h{" last" if i == len(cols) - 1 else ""}">{esc(c)}</div>' for i, c in enumerate(cols))
+        body = ""
+        for label, small, cells in rows:
+            best = max(range(len(cells)), key=lambda i: cells[i][1])
+            body += (f'<div class="hm-r"><b>{esc(label)}</b>' + (f"<span>{esc(small)}</span>" if small else "") + "</div>")
+            for i, (text, lv) in enumerate(cells):
+                bg = "#" + "".join(f"{round(255 - (255 - h) * (0.12 + 0.88 * lv)):02x}" for h in HIT_RGB)
+                cls = "hm-c" + (" best" if i == best else "") + (" dark" if lv > 0.6 else "")
+                body += f'<div class="{cls}" style="background:{bg}">{esc(text)}</div>'
+        top = 330 if sub else 280
+        page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="heatmap" style="top:{top}px; '
+                f'grid-template-columns:340px repeat({len(cols)},1fr)">{head}{body}</div>{self._foot(src)}</section>')
+        return self._add(page, notes, src)
+
     def contrast(self, kicker, title, tags, before, after, examples, *, src="", notes=""):
         """Before and after cards, and a row of `examples`: (heading, words)."""
         ex = "".join(f'<div class="ex"><div class="exh">{esc(h)}</div><div class="ext">{esc(t)}</div></div>'
@@ -173,12 +199,14 @@ class Explainer:
                 f"{self._foot(src)}</section>")
         return self._add(page, notes, src)
 
-    def twocol(self, kicker, title, left, right, sub="", *, top=None, src="", notes=""):
-        """Two cards: (heading, colour, [points]) each."""
+    def twocol(self, kicker, title, left, right, sub="", *, outline=False, top=None, src="", notes=""):
+        """Two cards: (heading, colour, [points]) each. `outline`: the good/weak panels, the whole rim in the
+        card's colour (4px) instead of a bar on top."""
         def col(c):
             h, colr, pts = c
             li = "".join(f"<li>{p}</li>" for p in pts)
-            return (f'<div class="card" style="border-top:10px solid {_color(colr)}"><h3 style="color:{_color(colr)}">'
+            rim = f"border:4px solid {_color(colr)}" if outline else f"border-top:10px solid {_color(colr)}"
+            return (f'<div class="card" style="{rim}"><h3 style="color:{_color(colr)}">'
                     f'{esc(h)}</h3><ul class="points mid">{li}</ul></div>')
         top = top if top is not None else (340 if sub else 300)
         page = (f'<section class="slide">{self._head(kicker, title, sub)}<div class="body cards" style="top:{top}px; '

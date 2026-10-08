@@ -78,3 +78,33 @@ def test_sub_lines_move_quote_and_two_column_bodies_down(renderer, tmp_path):
     b = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("L", "hit", ["a"]), ("R", "red", ["b"]), sub="S", notes="n"),
                 [".cards", "h2"])
     assert b[".cards"][0][1] == a[".cards"][0][1] + 40 and b["h2"]
+
+
+def test_heatmap_cells_rows_and_outline(renderer, tmp_path):
+    rows = [("Recall", "top-5", [(".41", .41), (".63", .63), (".88", .88)]),
+            ("Cost", "", [(".90", .9), (".50", .5), (".20", .2)])]
+    m = measure(renderer, tmp_path, lambda x: x.heatmap("K", "T", ["A", "B", "C"], rows, notes="n"),
+                [".heatmap", ".hm-c", ".hm-c.best", ".hm-h.last"])
+    assert m[".heatmap"][0][1] == 280
+    assert len(m[".hm-c"]) == 6 and all(c[3] == 60 for c in m[".hm-c"])
+    assert m[".hm-c.best"] == [m[".hm-c"][2], m[".hm-c"][3]]  # the row's strongest cell: last of row 1, first of row 2
+    assert len(m[".hm-h.last"]) == 1
+
+
+def test_heatmap_refuses_ragged_rows_and_bad_levels(tmp_path):
+    from publishing.explainer import Explainer
+    x = Explainer(tmp_path / "e.py", "T")
+    with pytest.raises(ValueError, match="cells"):
+        x.heatmap("K", "T", ["A", "B"], [("r", "", [("1", .5)])], notes="n")
+    with pytest.raises(ValueError, match="level"):
+        x.heatmap("K", "T", ["A"], [("r", "", [("1", 1.5)])], notes="n")
+
+
+def test_twocol_outline_rims_the_whole_card(renderer, tmp_path):
+    m = measure(renderer, tmp_path, lambda x: x.twocol("K", "T", ("Good", "hit", ["a"]), ("Weak", "red", ["b"]),
+                                                       outline=True, notes="n"), [".card"])
+    assert len(m[".card"]) == 2 and m[".card"][0][3] < 400  # compact, not stretched
+    import re
+    x = Explainer(tmp_path / "e.py", "T")
+    x.twocol("K", "T", ("Good", "hit", ["a"]), ("Weak", "red", ["b"]), outline=True, notes="n")
+    assert len(re.findall(r'style="border:4px solid var\(--(?:hit|red)\)"', x.S[0])) == 2 and "border-top:10px" not in x.S[0]

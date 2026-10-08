@@ -149,3 +149,14 @@ body { font-family: var(--sans); color: var(--ink); }
 .ev { background: #273049; border-radius: 18px; padding: 30px 32px; }
 .evn { font-size: 64px; font-weight: 800; color: #b3a9ff; line-height: 1; margin-bottom: 18px; }
 .evt { font-size: 25px; line-height: 1.4; color: #e6e7f2; }
+
+/* Heat-map: row labels, cells shaded by value (inline, so the PPTX carries the fill), the row's best outlined, last column head in accent. */
+.heatmap { position: absolute; left: 120px; right: 120px; display: grid; gap: 8px; align-content: start; grid-auto-rows: 60px; }
+.hm-h { font-size: 17px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; text-align: center; align-self: end; padding-bottom: 6px; }
+.hm-h.last { color: var(--accent); }
+.hm-r { display: flex; flex-direction: column; justify-content: center; padding-right: 16px; }
+.hm-r b { font-size: 26px; line-height: 1.1; font-weight: 700; color: var(--ink); }
+.hm-r span { font-size: 18px; line-height: 1.2; color: var(--muted); }
+.hm-c { display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 26px; font-weight: 600; color: var(--ink); border: 3px solid transparent; box-sizing: border-box; }
+.hm-c.dark { color: #fff; }
+.hm-c.best { border-color: var(--ink); font-weight: 800; }
