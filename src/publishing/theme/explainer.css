@@ -76,6 +76,7 @@ body { font-family: var(--sans); color: var(--ink); }
 
 /* Diagram slides */
 .diagram { position: absolute; left: 120px; right: 120px; top: 270px; bottom: 112px; }
+.diagram.barred { bottom: 250px; }  /* clear of the takeaway bar (.lesson: 100px tall, 120px up) */
 .diagram svg { width: 100%; height: 100%; }
 .caption { position: absolute; left: 120px; right: 120px; bottom: 120px; font-size: 28px; color: var(--ink2); }
 

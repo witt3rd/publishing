@@ -201,7 +201,8 @@ x.statement("The point", "Headline", ["<b>Idea.</b> One per line"], src="Source 
 TITLE, S, NOTES, AUTHOR = x.TITLE, x.S, x.NOTES, x.AUTHOR
 ```
 
-- **Slides.** `title`, `section`, `statement`, `quote`, `diagram` (an SVG from the folder, inlined), `cards` (with a
+- **Slides.** `title`, `section`, `statement`, `quote`, `diagram` (an SVG from the folder, inlined; `takeaway=(label, words)` adds the dark bar under it, the box then ends 250px up so
+  draw it at most about 530px tall at 1680 wide), `cards` (with a
   lesson bar), `story` (what went wrong, why it got through, the rule), `map` (a table with status chips), `contrast`
   (before, after, three examples), `twocol`, `closing` (three big figures). Headings and labels are escaped; points and
   paragraphs are HTML from your own code. Palette names (`accent`, `detour`, `hit`, `missed`, `red`) or `#hex` colour a card.
