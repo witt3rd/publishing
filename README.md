@@ -377,10 +377,11 @@ turns a narration script into speech timed to a video's scenes. Install `publish
 - **Explicit model and voice.** A caller names both: `--tts-model elevenlabs/eleven-v4-turbo --voice <voice id or name>`
   (`--model` is the old spelling of `--tts-model`). Any OpenRouter speech model id is passed through as given; the
   voice is sent as given, or, left out, is the one `MODELS` names for a known model (none for another). The standalone
-  default exists only when `--tts-model` is not given: `[narrate] tts_model` and `voice` in `docs/report.toml`, else the
-  **house voice, `elevenlabs/eleven-v4-turbo` voice `Brian` (US, deep)**, which needs `OPENROUTER_API_KEY` and ffmpeg.
-  `--tts-model kokoro` (or `local`) is the local, free, keyless voice (`--voice` then a Kokoro voice, default `af_heart`). A host that drives narration, such as Spire, passes `--tts-model` and `--voice` itself; which model is
-  meant stays its own resolution (its gateway key, `SPEAK_MODEL`), nothing here reads that. `NAME.json` records
+  default exists only when `--tts-model` is not given: the voice is `[narrate] voice` in `docs/report.toml` (else `Brian`),
+  and the model is the host speech setting, the `SPEAK_MODEL` environment variable (`[narrate] tts_model` overrides it).
+  No model is built in: with none of them set, the command exits 2 naming `SPEAK_MODEL`. It needs `OPENROUTER_API_KEY` and ffmpeg.
+  `--tts-model kokoro` (or `local`) is the local, free, keyless voice (`--voice` then a Kokoro voice, default `af_heart`). A host that drives narration, such as Spire, passes `--tts-model` and `--voice` itself; and the
+  model it means is the one in `SPEAK_MODEL`, which the standalone default reads too. `NAME.json` records
   `tts_model` (null for Kokoro) and `tts_voice` (null when the default voice was used) beside `voice`.
 - **Worked example.** [examples/narration/caching-explainer-v1](examples/narration/caching-explainer-v1): the script,
   the video as a template and `build.sh`, which narrates (the house voice when a key is set, else Kokoro), fits the scenes

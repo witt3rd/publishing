@@ -47,8 +47,8 @@ MODEL_FILES = {  # name -> sha256
 }
 VOICE = "af_heart"  # the Kokoro voice
 LOCAL = ("kokoro", "local")  # --tts-model values that mean local Kokoro
-DEFAULT_MODEL = "elevenlabs/eleven-v4-turbo"  # the house voice for the standalone CLI: Brian (US, deep), via OpenRouter
-DEFAULT_VOICE = "Brian"
+HOST_MODEL_ENV = "SPEAK_MODEL"  # the host speech setting: the model when neither a flag nor report.toml names one
+DEFAULT_VOICE = "Brian"  # the voice when none is named; the model is never hardcoded
 ENDPOINT = "https://openrouter.ai/api/v1/audio/speech"
 MODELS = {  # OpenRouter speech model -> the voice it needs ("" when it takes none)
     "fish-audio/s2.1-pro": "",
@@ -283,7 +283,7 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("-o", "--output-dir", help="where NAME.wav and NAME.json go (default: beside the script; never overwritten)")
     p.add_argument("--tts-model", "--model", dest="model", metavar="MODEL",
                    help="the OpenRouter speech model, any id (needs OPENROUTER_API_KEY and ffmpeg), or `kokoro` for local, free "
-                   f"speech. Default: report.toml [narrate] tts_model, else {DEFAULT_MODEL} voice {DEFAULT_VOICE}. Known: "
+                   f"speech. Default: report.toml [narrate] tts_model, else ${HOST_MODEL_ENV} from the environment (voice {DEFAULT_VOICE} unless named). Known: "
                    + ", ".join(MODELS))
     p.add_argument("--voice", help=f"a Kokoro voice (default {VOICE}), or the model's voice id (default: the one MODELS names)")
     p.add_argument("--speed", type=float, default=1.0, help="speaking speed, 0.5 to 2 (default 1)")
@@ -294,12 +294,16 @@ def add_arguments(p: argparse.ArgumentParser) -> None:
 
 def resolve(model, voice, config=(None, None)):
     """(model, voice) to synthesize with. Explicit flags win; the standalone default (no --tts-model) is
-    report.toml `[narrate]`, else the house voice (DEFAULT_MODEL, Brian). `kokoro` or `local` is local Kokoro:
-    model None, and the voice a Kokoro one (None: VOICE)."""
+    report.toml `[narrate]` (the voice, and optionally a model), else the model of the host speech setting
+    (SPEAK_MODEL in the environment); with none of them it raises Usage naming SPEAK_MODEL. `kokoro` or `local`
+    is local Kokoro: model None, and the voice a Kokoro one (None: VOICE)."""
     if model is None:
-        model = config[0] or DEFAULT_MODEL
+        model = config[0] or os.environ.get(HOST_MODEL_ENV) or None
+        if model is None:
+            raise Usage(f"no narration model: set {HOST_MODEL_ENV} in the environment (the host speech setting), "
+                        "or pass --tts-model (`kokoro` is local and needs none)")
         if voice is None:
-            voice = config[1] or (DEFAULT_VOICE if model == DEFAULT_MODEL else None)
+            voice = config[1] or (DEFAULT_VOICE if model not in LOCAL else None)
     if model in LOCAL:
         model = None
     return model, voice
