@@ -8,11 +8,12 @@ out="${1:-out}"; mkdir -p "$out"
 pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publishing@v0.17.0" publishing)
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
-# The voice: OpenRouter's house voice (elevenlabs/eleven-v4-turbo, Brian) when OPENROUTER_API_KEY is in the environment (run under `doppler run`, or
+# The voice: the host speech model when OPENROUTER_API_KEY and SPEAK_MODEL are both in the environment (run under `doppler run`, or
 # export it; the key is read from the environment only), else local, free Kokoro. NARRATE_MODEL=... picks another
 # OpenRouter speech model, NARRATE_MODEL=kokoro forces the local voice.
 model="${NARRATE_MODEL:-}"
-[ -n "$model" ] || { [ -n "${OPENROUTER_API_KEY:-}" ] || model=kokoro; }   # no key: local Kokoro; else the house default
+[ -n "$model" ] || [ -z "${OPENROUTER_API_KEY:-}" ] || model="${SPEAK_MODEL:-}"   # a key: the host speech model, named here so any pinned version takes it
+[ -n "$model" ] || model=kokoro   # no key or no SPEAK_MODEL: local Kokoro
 args=(); [ -z "$model" ] || args=(--tts-model "$model")
 "${pub[@]}" narrate narration.txt -o "$out" "${args[@]}"   # out/narration.wav and out/narration.json
 # Fit the scenes to the speech: fill the template's start and duration from out/narration.json.

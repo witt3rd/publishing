@@ -140,11 +140,23 @@ def test_report_toml_narrate_defaults_and_flags_win(tmp_path):
     assert p.parse_args(["x.txt", "--model", "m"]).model == "m"  # the old name still works
 
 
-def test_house_default_is_brian_on_eleven_v4_turbo_and_explicit_wins():
-    assert nr.resolve(None, None) == ("elevenlabs/eleven-v4-turbo", "Brian")
-    assert nr.resolve(None, "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
+def test_model_comes_from_the_host_speech_setting_and_explicit_wins(monkeypatch):
+    monkeypatch.setenv("SPEAK_MODEL", "host/model-x")
+    assert nr.resolve(None, None) == ("host/model-x", "Brian")
+    assert nr.resolve(None, "Rachel") == ("host/model-x", "Rachel")
     assert nr.resolve("fish-audio/s2.1-pro", None) == ("fish-audio/s2.1-pro", None)
-    assert nr.resolve("elevenlabs/eleven-v4-turbo", "Rachel") == ("elevenlabs/eleven-v4-turbo", "Rachel")
     assert nr.resolve("kokoro", None) == (None, None) and nr.resolve("local", "af_sky") == (None, "af_sky")
-    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", "v1")) == ("fish-audio/s2.1-pro", "v1")  # report.toml beats the house default
-    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", None)) == ("fish-audio/s2.1-pro", None)
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", "v1")) == ("fish-audio/s2.1-pro", "v1")  # report.toml beats the host
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", None)) == ("fish-audio/s2.1-pro", None)  # a known model keeps its own voice
+    monkeypatch.setenv("SPEAK_MODEL", "deepgram/flux-tts")
+    assert nr.resolve(None, None) == ("deepgram/flux-tts", None)  # the host model is known: MODELS names its voice
+    monkeypatch.setenv("SPEAK_MODEL", "host/model-x")
+    assert nr.resolve(None, None, (None, "v2")) == ("host/model-x", "v2")  # the config names the voice only
+
+
+def test_no_host_setting_fails_naming_it_and_no_model_is_hardcoded(monkeypatch):
+    monkeypatch.delenv("SPEAK_MODEL", raising=False)
+    with pytest.raises(nr.Usage, match="SPEAK_MODEL"):
+        nr.resolve(None, None)
+    assert nr.resolve("kokoro", None) == (None, None)  # local needs no model
+    assert "eleven-v4-turbo" not in Path(nr.__file__).read_text()
