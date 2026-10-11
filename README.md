@@ -384,10 +384,10 @@ turns a narration script into speech timed to a video's scenes. Install `publish
   model it means is the one in `SPEAK_MODEL`, which the standalone default reads too. `NAME.json` records
   `tts_model` (null for Kokoro) and `tts_voice` (null when the default voice was used) beside `voice`.
 - **Worked example.** [examples/narration/caching-explainer-v1](examples/narration/caching-explainer-v1): the script,
-  the video as a template and `build.sh`, which narrates (the house voice when a key is set, else Kokoro), fits the scenes
+  the video as a template and `build.sh`, which narrates (the host speech model, `SPEAK_MODEL`, when a key is set, else Kokoro), fits the scenes
   to the speech, builds the video and muxes the audio. Sources only; the MP4 is not committed.
 - **Exit codes.** 0 done; 1 synthesis or the model download failed; 2 usage (no scenes, an output exists, no key for
-  `--tts-model`); 3 the extra or ffmpeg is missing.
+  `--tts-model`, no model named and `SPEAK_MODEL` unset); 3 the extra or ffmpeg is missing.
 
 ## Explainer template (video)
 

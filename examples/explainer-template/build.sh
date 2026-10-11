@@ -10,7 +10,8 @@ pub=(uvx --from "publishing[video,narrate] @ git+https://github.com/witt3rd/publ
 [ -z "${PUBLISHING_FROM:-}" ] || pub=(uvx --from "publishing[video,narrate] @ $PUBLISHING_FROM" publishing)
 "${pub[@]}" setup --video
 model="${NARRATE_MODEL:-}"
-[ -n "$model" ] || { [ -n "${OPENROUTER_API_KEY:-}" ] && [ -n "${SPEAK_MODEL:-}" ]; } || model=kokoro   # no key or no SPEAK_MODEL: local Kokoro
+[ -n "$model" ] || [ -z "${OPENROUTER_API_KEY:-}" ] || model="${SPEAK_MODEL:-}"   # a key: the host speech model, named here so any pinned version takes it
+[ -n "$model" ] || model=kokoro   # no key or no SPEAK_MODEL: local Kokoro
 args=(); [ -z "$model" ] || args=(--tts-model "$model")
 python3 "$here/explain.py" narration "$src/script.md" > "$out/narration.txt"
 "${pub[@]}" narrate "$out/narration.txt" -o "$out" "${args[@]}"   # out/narration.wav and out/narration.json

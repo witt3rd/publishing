@@ -147,6 +147,10 @@ def test_model_comes_from_the_host_speech_setting_and_explicit_wins(monkeypatch)
     assert nr.resolve("fish-audio/s2.1-pro", None) == ("fish-audio/s2.1-pro", None)
     assert nr.resolve("kokoro", None) == (None, None) and nr.resolve("local", "af_sky") == (None, "af_sky")
     assert nr.resolve(None, None, ("fish-audio/s2.1-pro", "v1")) == ("fish-audio/s2.1-pro", "v1")  # report.toml beats the host
+    assert nr.resolve(None, None, ("fish-audio/s2.1-pro", None)) == ("fish-audio/s2.1-pro", None)  # a known model keeps its own voice
+    monkeypatch.setenv("SPEAK_MODEL", "deepgram/flux-tts")
+    assert nr.resolve(None, None) == ("deepgram/flux-tts", None)  # the host model is known: MODELS names its voice
+    monkeypatch.setenv("SPEAK_MODEL", "host/model-x")
     assert nr.resolve(None, None, (None, "v2")) == ("host/model-x", "v2")  # the config names the voice only
 
 

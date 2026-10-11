@@ -303,7 +303,7 @@ def resolve(model, voice, config=(None, None)):
             raise Usage(f"no narration model: set {HOST_MODEL_ENV} in the environment (the host speech setting), "
                         "or pass --tts-model (`kokoro` is local and needs none)")
         if voice is None:
-            voice = config[1] or (DEFAULT_VOICE if model not in LOCAL else None)
+            voice = config[1] or (DEFAULT_VOICE if model not in LOCAL and model not in MODELS else None)
     if model in LOCAL:
         model = None
     return model, voice
