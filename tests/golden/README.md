@@ -41,7 +41,7 @@ section of the manifest, and a bump of the shared base image digest or of `uv.lo
 | images resize, convert, thumbnail, strip | 7 cases | `images` |
 | pdf merge, pages, strip | 4 cases | `pdf` |
 | render-html (page images, thumbnail, PDF text) | `pages`, `memo` | `render` |
-| build from a template (the house PDF) | the CI `container reproduces its own bytes` job, plus `tests/fixtures/house-style-*-v1.pdf` | `ci.yml`, `test_build.py` |
+| build from a template (the house PDF) | the CI `container reproduces its own bytes` job, plus `docs/samples/house-style-*-v1.pdf` | `ci.yml`, `test_build.py` |
 | a11y, compare, publish, check, user-content (untrusted html) | none by bytes: rule checks, not outputs | `test_a11y.py`, `test_publish.py`, `test_renderhtml.py`, `test_usercontent*.py` |
 | video (HyperFrames) | none: Chromium frames and encoder are not byte-stable across machines | `test_video.py` |
 

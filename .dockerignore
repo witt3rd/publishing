@@ -7,3 +7,4 @@
 !src/
 !tests/
 **/__pycache__
+!docs/samples/house-style-*-v1.pdf
