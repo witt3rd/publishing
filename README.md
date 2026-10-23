@@ -98,6 +98,10 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   heading levels the contents list; 2 by default, `false` for none).
 - **Layout.** `docs/<kind>/<topic>-vN/` holds the sources; `docs/<kind>/<topic>-vN.pdf` (or `.mp4`) sits
   beside it, committed. The folder is the listing: no index files.
+- **Binaries.** A committed PDF or MP4 lives under `docs/`, beside its source, where `publishing check`
+  proves it rebuilds. Elsewhere only the declared test-input folders `tests/fixtures/` and
+  `tests/golden/inputs/` may hold one; CI (`tools/binary-check.sh`, run by the test suite) fails on any other. Files in those
+  folders have no source and are not rebuilt.
 - **Config.** `docs/report.toml` holds the pinned version (`publishing = "0.18.0"`), the `project`, the
   repo's private scan words, the `[publish]` folder for each kind, the `[video] tolerance`, and
   `[[document]]` entries for markdown files with a fixed PDF path (for example a spec rendered to
