@@ -1,0 +1,9 @@
+# Keeps HyperFrames (the video renderer) current: a new release opens a PR, and CI's video tests and sample
+# rebuild prove the bump. Merging it with a version bump releases a tag that carries it to the catalog.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /src/publishing/hyperframes
+    schedule: { interval: weekly }
+    groups:
+      hyperframes: { patterns: ["*"] }
