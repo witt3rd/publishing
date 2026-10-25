@@ -132,6 +132,9 @@ residual risks: [docs/user-content.md](docs/user-content.md). The plain build is
   `with: { lfs: true }` to checkout if the files are in LFS. Run it by hand with `ci/check.sh [CONFIG]`
   (`PUBLISHING_DEPS=0` off Debian, `PUBLISHING_FROM=<path or git+url>` to test an unreleased tree);
   `tools/action-check.sh` proves it on a scratch repo, and this repo's CI runs that.
+- **HyperFrames currency.** Dependabot (`.github/dependabot.yml`) opens a weekly PR for new HyperFrames releases in
+  `src/publishing/hyperframes`; CI proves it. Merge it together with a minor version bump: the release workflow tags
+  that version, and catalog images that take publishing at a tag carry the new HyperFrames once they adopt it.
 - **Versions.** Tags are immutable. A release that changes rendering (theme, fonts, Playwright,
   HyperFrames) is a minor bump; a repo adopts it by bumping its pin and running `publishing check`.
 - **Adopter pins.** Pin the tool by the `publishing` version in `report.toml` (a release tag, without the
