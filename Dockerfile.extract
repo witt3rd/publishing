@@ -48,6 +48,7 @@ WORKDIR /opt/publishing/src
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src ./src
 COPY tests ./tests
+COPY docs/samples/house-style-deck-v1.pdf docs/samples/house-style-document-v1.pdf docs/samples/house-style-memo-v1.pdf ./docs/samples/
 RUN --mount=from=uv,source=/uv,target=/usr/local/bin/uv \
     uv sync --locked --extra extract --no-editable && rm -rf /tmp/* /root/.cache && chmod -R a+rX /opt/publishing
 USER 65532:65532
