@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1560 700" font-family="Publishing Sans">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#5b4bd6"/></marker></defs>
+  <g font-size="30" text-anchor="middle">
+    <rect x="20" y="230" width="340" height="170" rx="18" fill="#fff" stroke="#dcd9d0" stroke-width="2"/>
+    <text x="190" y="298" fill="#1d2433" font-weight="700">Worker</text>
+    <text x="190" y="340" fill="#4a5163" font-size="23">runs all tests on</text>
+    <text x="190" y="370" fill="#4a5163" font-size="23">its base, adds certificate</text>
+
+    <rect x="480" y="230" width="340" height="170" rx="18" fill="#ece9fb" stroke="#5b4bd6" stroke-width="2"/>
+    <text x="650" y="298" fill="#5b4bd6" font-weight="700">Lander</text>
+    <text x="650" y="340" fill="#4a5163" font-size="23">has main moved since the</text>
+    <text x="650" y="370" fill="#4a5163" font-size="23">worker started?</text>
+
+    <rect x="960" y="40" width="360" height="150" rx="18" fill="#fff" stroke="#dcd9d0" stroke-width="2"/>
+    <text x="1140" y="102" fill="#1d2433" font-weight="700">No: land now</text>
+    <text x="1140" y="144" fill="#4a5163" font-size="23">no further testing</text>
+
+    <rect x="960" y="260" width="360" height="150" rx="18" fill="#fff" stroke="#dcd9d0" stroke-width="2"/>
+    <text x="1140" y="322" fill="#1d2433" font-weight="700">Yes: check the overlap</text>
+    <text x="1140" y="364" fill="#4a5163" font-size="23">tests that touch what moved</text>
+
+    <rect x="960" y="500" width="360" height="150" rx="18" fill="#fff" stroke="#dcd9d0" stroke-width="2"/>
+    <text x="1140" y="562" fill="#1d2433" font-weight="700">Check fails</text>
+    <text x="1140" y="604" fill="#4a5163" font-size="23">back to the worker, with why</text>
+
+    <rect x="1380" y="140" width="170" height="190" rx="18" fill="#ece9fb" stroke="#5b4bd6" stroke-width="2"/>
+    <text x="1465" y="225" fill="#5b4bd6" font-weight="700">main</text>
+    <text x="1465" y="268" fill="#4a5163" font-size="23">one writer,</text>
+    <text x="1465" y="298" fill="#4a5163" font-size="23">one at a time</text>
+  </g>
+  <g stroke="#5b4bd6" stroke-width="5" fill="none" marker-end="url(#arr)">
+    <path d="M365 315 H470"/>
+    <path d="M825 280 L950 140"/>
+    <path d="M825 330 H950"/>
+    <path d="M825 370 L950 540"/>
+    <path d="M1325 115 L1370 200"/>
+    <path d="M1325 335 L1370 280"/>
+    <path d="M955 585 H190 V410" stroke-dasharray="14 10"/>
+  </g>
+  <text x="570" y="565" font-size="22" fill="#4a5163" text-anchor="middle">fix, rebase, new certificate</text>
+</svg>
