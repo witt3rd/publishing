@@ -118,10 +118,16 @@
     };
 
     const hook = () => {
+      // Official HyperFrames seek protocol: listen for `hf-seek` events carrying `e.detail.time`.
+      if (typeof global.addEventListener === "function") {
+        global.addEventListener("hf-seek", (e) => {
+          const t = e && e.detail && typeof e.detail.time === "number" ? e.detail.time : 0;
+          renderAt(t);
+        });
+      }
+      // Also wrap `window.__hf.seek` for direct headless/unit-test driving.
       const hf = (global.__hf = global.__hf || {});
       if (!hf.duration) hf.duration = dur;
-      // Use a setter on `hf.seek` so when HyperFrames' bridge assigns `hf.seek = ...`
-      // after load, our paint(t) callback stays wrapped around it.
       let inner = typeof hf.seek === "function" ? hf.seek.bind(hf) : null;
       const wrapped = function (t, opts) {
         if (inner) inner(t, opts);
