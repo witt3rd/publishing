@@ -120,11 +120,23 @@
     const hook = () => {
       const hf = (global.__hf = global.__hf || {});
       if (!hf.duration) hf.duration = dur;
-      const orig = typeof hf.seek === "function" ? hf.seek.bind(hf) : null;
-      hf.seek = function (t, opts) {
-        if (orig) orig(t, opts);
+      // Use a setter on `hf.seek` so when HyperFrames' bridge assigns `hf.seek = ...`
+      // after load, our paint(t) callback stays wrapped around it.
+      let inner = typeof hf.seek === "function" ? hf.seek.bind(hf) : null;
+      const wrapped = function (t, opts) {
+        if (inner) inner(t, opts);
         renderAt(t);
       };
+      Object.defineProperty(hf, "seek", {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return wrapped;
+        },
+        set(fn) {
+          inner = typeof fn === "function" ? fn.bind(hf) : null;
+        },
+      });
     };
 
     hook();
