@@ -35,8 +35,9 @@ def test_stage_js_cues_math_and_seek_hook():
     out = _run_node(f"""
 const fs = require("fs");
 const vm = require("vm");
+const listeners = {};
 const sandbox = {{
-  window: {{}},
+  window: {{ addEventListener: (ev, fn) => {{ (listeners[ev] = listeners[ev] || []).push(fn); }} }},
   document: {{
     readyState: "complete",
     getElementById: () => ({{ dataset: {{ duration: "6", fps: "30" }} }}),
@@ -71,11 +72,12 @@ try {{ cue("not there"); }} catch (e) {{ missingThrew = /not found/.test(e.messa
 const r1 = S.rng(42), r2 = S.rng(42);
 const sameRng = r1() === r2() && r1() === r2();
 
-// 3. HyperFrames __hf.seek hook (must survive HyperFrames' bridge overwriting __hf.seek after mount)
+// 3. HyperFrames seek protocol (`hf-seek` event + `__hf.seek` fallback)
 const seen = [];
 let bridgeCalled = 0;
 S.mount({{ canvas: null, duration: 6, fps: 30, paint: ({{ t, frame }}) => seen.push([t, frame]) }});
 sandbox.window.__hf.seek = (t) => {{ bridgeCalled++; }};
+(listeners["hf-seek"] || []).forEach((fn) => fn({{ detail: {{ time: 1.5 }} }}));
 sandbox.window.__hf.seek(2.5);
 sandbox.window.__hf.seek(9.0); // clamped to duration=6
 
@@ -97,5 +99,5 @@ console.log(JSON.stringify({{
     assert res["missingThrew"] is True
     assert res["sameRng"] is True
     assert res["sstepMid"] == 0.5
-    assert res["seen"] == [[0, 0], [2.5, 75], [6, 180]]
+    assert res["seen"] == [[0, 0], [1.5, 45], [2.5, 75], [6, 180]]
     assert res["bridgeCalled"] == 2
