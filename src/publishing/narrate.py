@@ -230,15 +230,21 @@ def synthesize(scenes, *, voice: str = VOICE, speed: float = 1.0, models: Path |
     return out
 
 
+from publishing.align import align_words
+
+
 def lay_out(spoken, gap: float, voice: str = VOICE) -> tuple[bytes, dict]:
     """Join scenes in order, each followed by `gap` seconds of silence: the wav's frames and the timing table."""
     pad = round(gap * SAMPLE_RATE)
     frames, scenes, at = [], [], 0
     for sid, text, samples in spoken:
         n = len(samples)
+        start = round(at / SAMPLE_RATE, 3)
         frames.append(bytes(samples.tobytes() if hasattr(samples, "tobytes") else samples) + b"\0\0" * pad)
-        scenes.append({"id": sid, "text": text, "start": round(at / SAMPLE_RATE, 3),
-                       "speech": round(n / SAMPLE_RATE, 3), "duration": round((n + pad) / SAMPLE_RATE, 3)})
+        words = align_words(samples, SAMPLE_RATE, text, offset=start)
+        scenes.append({"id": sid, "text": text, "start": start,
+                       "speech": round(n / SAMPLE_RATE, 3), "duration": round((n + pad) / SAMPLE_RATE, 3),
+                       "words": words})
         at += n + pad
     return b"".join(frames), {"voice": voice, "sample_rate": SAMPLE_RATE, "duration": round(at / SAMPLE_RATE, 3),
                               "scenes": scenes}
