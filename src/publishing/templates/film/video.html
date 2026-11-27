@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- Continuous-stage film composition for {name}.mp4. Build: publishing build {rel}
+     One persistent <canvas> driven by HyperFrames' seek clock via PublishingStage.mount().
+     Every visual beat is a pure function of `t` (seconds) and word-cue timestamps from
+     `publishing narrate`'s NAME.json — no slide cards, no Date, no Math.random. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{name}</title>
+  <style>
+    html, body, #root {{ margin: 0; padding: 0; width: 1920px; height: 1080px; background: #000; overflow: hidden; }}
+    canvas {{ display: block; width: 1920px; height: 1080px; }}
+  </style>
+</head>
+<body>
+<div id="root" data-composition-id="root" data-no-timeline data-width="1920" data-height="1080"
+     data-fps="30" data-start="0" data-duration="6">
+  <canvas id="stage" width="1920" height="1080"></canvas>
+</div>
+<script src="_theme/stage.js"></script>
+<script>
+const {{ WHITE, GOLD, BG_DARK, sstep, ease, lerp, makeCues, mount }} = window.PublishingStage;
+
+// Replace with the JSON emitted by `publishing narrate script.txt` (includes per-word start/end).
+const NARRATION = {{
+  duration: 6.0,
+  scenes: [
+    {{
+      id: "s01",
+      start: 0.0,
+      duration: 6.0,
+      words: [
+        {{ word: "One", start: 0.2, end: 0.5 }},
+        {{ word: "continuous", start: 0.5, end: 1.1 }},
+        {{ word: "stage.", start: 1.1, end: 1.6 }},
+        {{ word: "Every", start: 2.0, end: 2.4 }},
+        {{ word: "beat", start: 2.4, end: 2.8 }},
+        {{ word: "moves", start: 2.8, end: 3.3 }},
+        {{ word: "on", start: 3.3, end: 3.5 }},
+        {{ word: "the", start: 3.5, end: 3.7 }},
+        {{ word: "word.", start: 3.7, end: 4.3 }},
+      ],
+    }},
+  ],
+}};
+
+const {{ cue }} = makeCues(NARRATION);
+const tStage = cue("continuous stage");
+const tWord = cue("on the word");
+
+mount({{
+  canvas: document.getElementById("stage"),
+  duration: NARRATION.duration,
+  fps: 30,
+  paint({{ ctx, t }}) {{
+    ctx.fillStyle = BG_DARK;
+    ctx.fillRect(0, 0, 1920, 1080);
+
+    // One persistent object that grows and shifts focus on the spoken cues.
+    const appear = ease(sstep(tStage - 0.3, tStage + 0.6, t));
+    const focus = ease(sstep(tWord - 0.2, tWord + 0.5, t));
+
+    ctx.save();
+    ctx.translate(960, 540);
+    const radius = lerp(40, 260, appear);
+    ctx.strokeStyle = focus > 0.5 ? GOLD : WHITE;
+    ctx.lineWidth = lerp(2, 4, focus);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2 * Math.max(0.01, appear));
+    ctx.stroke();
+
+    // Names and numbers only on screen; the voice carries the sentences.
+    ctx.fillStyle = WHITE;
+    ctx.font = '600 44px "Noto Sans", sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText("{kicker}", 0, -radius - 48);
+
+    if (focus > 0.05) {{
+      ctx.globalAlpha = focus;
+      ctx.fillStyle = GOLD;
+      ctx.font = '500 32px "Noto Sans Mono", monospace';
+      ctx.fillText(`t = ${{t.toFixed(2)}}s`, 0, 12);
+    }}
+    ctx.restore();
+  }},
+}});
+</script>
+</body>
+</html>
