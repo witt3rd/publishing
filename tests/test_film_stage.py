@@ -35,7 +35,7 @@ def test_stage_js_cues_math_and_seek_hook():
     out = _run_node(f"""
 const fs = require("fs");
 const vm = require("vm");
-const listeners = {};
+const listeners = {{}};
 const sandbox = {{
   window: {{ addEventListener: (ev, fn) => {{ (listeners[ev] = listeners[ev] || []).push(fn); }} }},
   document: {{
