@@ -21,7 +21,7 @@ def test_new_film_scaffolds_and_stages(tmp_path):
     src = target / "video.html"
     assert src.is_file()
     text = src.read_text()
-    assert "_theme/stage.js" in text
+    assert "_publishing/stage.js" in text
     assert "PublishingStage" in text
     assert "{name}" not in text
 
@@ -71,9 +71,11 @@ try {{ cue("not there"); }} catch (e) {{ missingThrew = /not found/.test(e.messa
 const r1 = S.rng(42), r2 = S.rng(42);
 const sameRng = r1() === r2() && r1() === r2();
 
-// 3. HyperFrames __hf.seek hook
+// 3. HyperFrames __hf.seek hook (must survive HyperFrames' bridge overwriting __hf.seek after mount)
 const seen = [];
+let bridgeCalled = 0;
 S.mount({{ canvas: null, duration: 6, fps: 30, paint: ({{ t, frame }}) => seen.push([t, frame]) }});
+sandbox.window.__hf.seek = (t) => {{ bridgeCalled++; }};
 sandbox.window.__hf.seek(2.5);
 sandbox.window.__hf.seek(9.0); // clamped to duration=6
 
@@ -85,6 +87,7 @@ console.log(JSON.stringify({{
   sameRng,
   sstepMid: S.sstep(0, 1, 0.5),
   seen,
+  bridgeCalled,
 }}));
 """)
     res = json.loads(out)
@@ -95,3 +98,4 @@ console.log(JSON.stringify({{
     assert res["sameRng"] is True
     assert res["sstepMid"] == 0.5
     assert res["seen"] == [[0, 0], [2.5, 75], [6, 180]]
+    assert res["bridgeCalled"] == 2
