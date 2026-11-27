@@ -309,6 +309,75 @@ def png(mp4: Path, out_dir: Path, *, width: int = 1400) -> list[Path]:
     return sorted(out_dir.glob("s*.png"))
 
 
+def stills(mp4: Path, out_dir: Path, times, *, width: int = 1280) -> list[Path]:
+    """Extract one PNG at each timestamp (seconds) for key/cue-frame review."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for idx, t in enumerate(times, 1):
+        t_val = max(0.0, float(t))
+        dest = out_dir / f"still-{idx:02d}-{t_val:.2f}s.png"
+        _run([ff("ffmpeg"), "-v", "error", "-y", "-ss", f"{t_val:.3f}", "-i", str(mp4),
+              "-frames:v", "1", "-vf", f"scale={width}:-2", str(dest)])
+        written.append(dest)
+    return written
+
+
+def contact_sheet(images, out: Path, *, cols: int = 3, tile_width: int = 640, pad: int = 8) -> Path:
+    """Tile a list of PNGs into one contact-sheet PNG for visual review."""
+    from PIL import Image
+
+    paths = [Path(p) for p in images]
+    if not paths:
+        raise ValueError("contact_sheet needs at least one image")
+    cols = max(1, min(int(cols), len(paths)))
+    tiles = []
+    for p in paths:
+        with Image.open(p) as im:
+            im = im.convert("RGB")
+            w, h = im.size
+            th = max(1, round(h * tile_width / w))
+            tiles.append(im.resize((tile_width, th), Image.Resampling.LANCZOS))
+    tile_h = max(t.height for t in tiles)
+    rows = math.ceil(len(tiles) / cols)
+    sheet = Image.new("RGB", (cols * tile_width + (cols + 1) * pad, rows * tile_h + (rows + 1) * pad), (16, 16, 18))
+    for i, t in enumerate(tiles):
+        r, c = divmod(i, cols)
+        sheet.paste(t, (pad + c * (tile_width + pad), pad + r * (tile_h + pad)))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    sheet.save(out)
+    return out
+
+
+def loudness(media_path: Path) -> dict:
+    """Measure integrated loudness (LUFS) and true peak (dBTP) via ffmpeg loudnorm."""
+    p = subprocess.run(
+        [ff("ffmpeg"), "-hide_banner", "-nostats", "-i", str(media_path),
+         "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", p.stderr, re.S)
+    if not m:
+        raise RuntimeError(f"loudnorm probe failed (exit {p.returncode}): {p.stderr.strip()[-400:]}")
+    d = json.loads(m.group(0))
+    return {"lufs": float(d["input_i"]), "true_peak": float(d["input_tp"]),
+            "lra": float(d["input_lra"]), "threshold": float(d["input_thresh"]), "raw": d}
+
+
+def normalize_loudness(src: Path, out: Path, *, i: float = -16.0, tp: float = -1.5, lra: float = 11.0) -> Path:
+    """Two-pass EBU R128 loudness normalization to -16 LUFS / -1.5 dBTP (copies video stream if present)."""
+    m = loudness(src)["raw"]
+    af = (f"loudnorm=I={i}:TP={tp}:LRA={lra}:linear=true"
+          f":measured_I={m['input_i']}:measured_TP={m['input_tp']}"
+          f":measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}"
+          f":offset={m['target_offset']}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [ff("ffmpeg"), "-v", "error", "-y", "-i", str(src), "-af", af]
+    if out.suffix.lower() == ".mp4":
+        cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart"]
+    _run(cmd + [str(out)])
+    return out
+
+
 def frame_hashes(mp4: Path) -> list[str]:
     out = _run([ff("ffmpeg"), "-v", "error", "-i", str(mp4), "-map", "0:v:0", "-f", "framemd5", "-"])
     return [line.rsplit(",", 1)[1].strip() for line in out.splitlines() if line and not line.startswith("#")]
